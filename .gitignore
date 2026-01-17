@@ -59,3 +59,7 @@ htmlcov/
 
 # notes
 notes/
+
+# Data files
+data/uploads/*
+data/extracted_text/*

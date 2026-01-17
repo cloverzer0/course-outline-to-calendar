@@ -1,5 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from models.event import CalendarEvent, EventType
+
+# API Routes
+from api.routes import upload
 
 
 # Create the FastAPI app instance
@@ -19,6 +23,10 @@ app.add_middleware(
 )
 
 
+# Register the upload router
+app.include_router(upload.router)
+
+
 @app.get("/")
 async def root():
     """
@@ -35,3 +43,18 @@ async def health_check():
     Health check endpoint for monitoring
     """
     return {"status": "ok"}
+
+
+@app.get("/test/event", response_model=CalendarEvent)
+async def test_event():
+    """Returns a sample event to test the model"""
+    return CalendarEvent(
+        id="event-123",
+        title="CS101 Lecture",
+        startDateTime="2026-01-20T10:00:00",
+        endDateTime="2026-01-20T11:30:00",
+        location="Room 302",
+        description="Introduction to Programming",
+        type=EventType.LECTURE,
+        needsReview=False
+    )
