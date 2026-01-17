@@ -32,7 +32,7 @@ def extract_events_from_pdf(file_path: str) -> List[CalendarEvent]:
             id="evt-1",
             title="CS 301 - Data Structures Lecture",
             startDateTime="2026-01-20T14:00:00",
-            endDateTime="2026-01-20T15:20:00",
+            endDateTime="2026-01-20T16:20:00",
             location="Room 101, Science Building",
             description="Introduction to arrays and linked lists",
             type=EventType.LECTURE,
@@ -48,7 +48,7 @@ def extract_events_from_pdf(file_path: str) -> List[CalendarEvent]:
         CalendarEvent(
             id="evt-2",
             title="Assignment 1 Due",
-            startDateTime="2026-01-25T23:59:00",
+            startDateTime="2026-01-25T20:00:00",
             endDateTime="2026-01-25T23:59:00",
             location="Online Submission",
             description="Implement a linked list in Python",
@@ -59,7 +59,7 @@ def extract_events_from_pdf(file_path: str) -> List[CalendarEvent]:
         CalendarEvent(
             id="evt-3",
             title="Office Hours - Dr. Smith",
-            startDateTime="2026-01-21T10:00:00",
+            startDateTime="2026-01-21T09:00:00",
             endDateTime="2026-01-21T12:00:00",
             location="Office 302B",
             description="Drop-in office hours",
