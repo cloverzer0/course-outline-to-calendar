@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next"
+import { Toaster } from "@/components/ui/sonner"
 
 
 // FullCalendar global styles (pick ONE set: index.css OR main.css)
@@ -31,6 +32,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SiteHeader />
+          <Toaster />
           {children}
         </ThemeProvider>
       </body>
