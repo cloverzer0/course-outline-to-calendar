@@ -25,17 +25,7 @@ class CourseEventsOutput(BaseModel):
 
 
 class PDFParser:
-    def __init__(self):
-        # Account for deprecation of LLM model
-        current_date = datetime.now().date()
-        target_date = datetime(2024, 6, 12).date()
-        
-        # Set the model variable based on the current date
-        if current_date > target_date:
-            llm_model = "gpt-3.5-turbo"
-        else:
-            llm_model = "gpt-3.5-turbo-0301"
-        
+    def __init__(self):        
         api_key = os.getenv('OPENAI_API_KEY')
         
         # Using OpenRouter - use gpt-4o-mini which supports structured output
