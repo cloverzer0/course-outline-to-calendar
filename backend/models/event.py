@@ -152,7 +152,7 @@ class CalendarEvent(BaseModel):
 
     @field_validator('endDateTime')
     @classmethod
-    def validate_end_after_start(cls, v, values):
+    def validate_end_after_start(cls, v, info):
         """Ensure end datetime is after start datetime"""
         if 'startDateTime' in info.data:
             start = datetime.fromisoformat(info.data['startDateTime'].replace('Z', '+00:00'))
