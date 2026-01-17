@@ -396,7 +396,7 @@ backend/
 - Create prompts to detect:
   - Lectures
   - Assignment deadlines
-  - Exams and quizzes
+  - Quizzes
   - Instructor and TA office hours
 - Identify dates, times, and recurring patterns
 - Ignore non-calendar-relevant content
