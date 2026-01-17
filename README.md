@@ -253,6 +253,279 @@ course-outline-to-calendar/
 
 ---
 
+## Team Work Assignment, Responsibilities & Dependencies
+
+**Team Size:** 4 Engineers
+
+### 🔑 Global Dependency (Applies to Everyone)
+
+#### Event Data Model & API Contract (🚨 Highest Priority)
+
+- **Must be defined and locked early in Phase 1**
+- **Shared by Engineers 1, 2, 3, and 4**
+
+Any late change impacts:
+- Frontend rendering
+- AI extraction
+- Backend validation
+- Calendar generation
+
+**Locked Fields:**
+- `title`
+- `startDateTime`
+- `endDateTime`
+- `location`
+- `description`
+- `recurrence`
+- `needsReview` (optional / confidence flag)
+
+⚠️ **Changing this late causes widespread rework and integration risk.**
+
+---
+
+### 👨‍💻 Engineer 1 — Frontend & User Experience
+
+**Focus:** User interaction, review flow, and usability
+
+#### Responsibilities
+
+- Design and implement frontend UI using React / Next.js
+- Build course outline input flow:
+  - PDF upload interface
+  - Input validation and feedback
+- Implement event preview and review UI:
+  - Clear display of extracted events
+  - Highlight ambiguous or incomplete events
+- Enable user controls to:
+  - Edit event details
+  - Add or delete events
+- Implement final export interaction:
+  - Trigger .ics file generation
+  - Handle file download
+- (Optional) Calendar visualization UI
+
+#### Project Structure Ownership
+```
+frontend/
+├── app/
+├── components/
+├── services/
+├── types/
+└── styles/
+```
+
+#### Phases Covered
+- Phase 2: Course Outline Input & Validation
+- Phase 6: User Review & Editing
+- Phase 7 (UI): Calendar Download & UX
+- Phase 8: Demo Flow Polish
+
+#### Parallel Work & Dependencies
+
+| Dependency | Provided By | Why It Matters |
+|------------|-------------|----------------|
+| Event data schema | Eng 2 + Eng 3 | Determines how events are rendered |
+| API endpoints | Eng 2 | Required to wire upload & export |
+| Validation flags | Eng 4 | Needed to highlight ambiguous events |
+
+**Blocking Risks:**
+- Full integration blocked until API contracts stabilize
+- Can work early using mock event data
+
+---
+
+### 👨‍💻 Engineer 2 — Backend API & File Processing
+
+**Focus:** Core backend pipeline and data flow
+
+#### Responsibilities
+
+- Set up FastAPI backend and routing
+- Implement secure PDF file upload
+  - Validate uploaded files (format, size)
+- Extract text from PDFs:
+  - Multi-page support
+  - Basic structure preservation
+- Clean and normalize extracted text
+- Define and maintain the core event data model
+- Expose API endpoints for:
+  - File upload
+  - Event extraction
+  - Returning structured events
+  - Generating .ics files
+
+#### Project Structure Ownership
+```
+backend/
+├── main.py
+├── api/
+├── services/pdf_parser.py
+├── services/text_cleaner.py
+├── models/
+└── utils/
+```
+
+#### Phases Covered
+- Phase 1: Architecture Setup
+- Phase 2: File Upload & Validation
+- Phase 3: PDF Text Extraction
+- Phase 5: Event Structuring & Validation
+- Phase 7: Calendar Generation (API side)
+
+#### Parallel Work & Dependencies
+
+| Dependency | Provided By | Why It Matters |
+|------------|-------------|----------------|
+| AI output format | Eng 3 | Needed to convert AI results into events |
+| Calendar generator interface | Eng 4 | Required for export endpoint |
+| Frontend needs | Eng 1 | Shapes response formats |
+
+**Blocking Risks:**
+- Event schema must align with Eng 3 early
+- Late schema changes cause API refactors
+
+---
+
+### 👨‍💻 Engineer 3 — AI / NLP Event Extraction
+
+**Focus:** Intelligence and automation
+
+#### Responsibilities
+
+- Design AI extraction pipeline using LangChain
+- Create prompts to detect:
+  - Lectures
+  - Assignment deadlines
+  - Exams and quizzes
+  - Instructor and TA office hours
+- Identify dates, times, and recurring patterns
+- Ignore non-calendar-relevant content
+- Flag ambiguous or incomplete information
+- Convert AI outputs into structured event components
+- Optimize extraction accuracy
+- Test against multiple real course outlines
+
+#### Project Structure Ownership
+```
+ai/
+├── prompts/
+├── chains/
+└── schemas/
+```
+
+#### Phases Covered
+- Phase 4: Information Extraction
+- Phase 5: Event Structuring (AI output)
+- Phase 8: Accuracy Testing & Refinement
+
+#### Parallel Work & Dependencies
+
+| Dependency | Provided By | Why It Matters |
+|------------|-------------|----------------|
+| Clean text format | Eng 2 | AI accuracy depends on text quality |
+| Event schema | Eng 2 + Eng 4 | Output must match calendar requirements |
+
+**Blocking Risks:**
+- Schema mismatches cause integration failures
+- Required vs optional fields must be agreed early
+
+---
+
+### 👨‍💻 Engineer 4 — Calendar Generation, Validation & QA
+
+**Focus:** Output correctness, reliability, and testing
+
+#### Responsibilities
+
+- Implement .ics file generation using iCalendar
+- Support:
+  - One-time events
+  - Recurring events (RRULE)
+- Ensure compatibility with:
+  - Google Calendar
+  - Apple Calendar
+  - Outlook
+- Validate date/time formats and time zones
+- Deduplicate events and handle edge cases
+- Write automated tests for:
+  - Event validation
+  - Calendar generation
+- Lead error handling and feedback consistency
+
+#### Project Structure Ownership
+```
+backend/services/ics_generator.py
+backend/services/event_validator.py
+backend/tests/
+```
+
+#### Phases Covered
+- Phase 5: Event Validation
+- Phase 7: Calendar File Generation
+- Phase 8: Error Handling, Testing & Demo Readiness
+
+#### Parallel Work & Dependencies
+
+| Dependency | Provided By | Why It Matters |
+|------------|-------------|----------------|
+| Final event model | Eng 2 + Eng 3 | Required to generate valid calendars |
+| Frontend UX expectations | Eng 1 | Ensures consistent error messaging |
+
+**Blocking Risks:**
+- .ics generation blocked until event schema is stable
+- Time zone handling must be agreed early
+
+---
+
+### 🔄 Collaboration & Integration Points
+
+| Area | Engineers Involved |
+|------|-------------------|
+| Event Data Model | Eng 2, 3, 4 |
+| API Contracts | Eng 1, 2 |
+| AI Output Schema | Eng 2, 3 |
+| Calendar Compatibility | Eng 1, 4 |
+| Demo Flow | All |
+
+### 🚨 Critical Integration Points (High Risk)
+
+#### 1️⃣ Event Schema Lock (Highest Priority)
+- **Engineers:** Eng 2 + 3 + 4
+- Must be finalized before Phase 4
+- Affects AI output, backend validation, frontend UI, and calendar generation
+
+#### 2️⃣ API Contract Freeze
+- **Engineers:** Eng 1 + 2
+- Upload, extract, and export endpoints
+- Frontend may mock early, but contracts must freeze before demo
+
+#### 3️⃣ Recurring Event Logic
+- **Engineers:** Eng 3 + 4
+- AI detects recurrence
+- Calendar generator encodes RRULE
+- Requires shared interpretation of lectures and office hours
+
+### 🧭 Parallel Execution Strategy
+
+#### Early Parallel Work
+- **Eng 1:** UI mockups
+- **Eng 2:** API + PDF parsing
+- **Eng 3:** AI extraction logic
+- **Eng 4:** .ics generation
+
+#### Midpoint
+- Lock schema (ALL)
+- Integrate AI → backend
+- Connect frontend to API
+
+#### Final Stage
+- Error handling
+- Review UI
+- Cross-platform calendar testing
+- Demo prep & polish
+
+---
+
 ## Getting Started
 
 ### Prerequisites
