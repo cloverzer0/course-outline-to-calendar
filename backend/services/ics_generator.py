@@ -29,14 +29,14 @@ class ICSGenerator:
     
     def generate_ics(
         self, 
-        events: List[dict], 
+        events: List, 
         calendar_name: str = "Course Calendar"
     ) -> str:
         """
         Generate .ics file content from list of events
         
         Args:
-            events: List of event dictionaries
+            events: List of event dictionaries or Pydantic models
             calendar_name: Name for the calendar
             
         Returns:
@@ -58,11 +58,18 @@ class ICSGenerator:
         # Add each event
         for event_data in events:
             try:
-                ical_event = self._create_event(event_data)
+                # Convert Pydantic model to dict if needed
+                if hasattr(event_data, 'model_dump'):
+                    event_dict = event_data.model_dump()
+                else:
+                    event_dict = event_data
+                    
+                ical_event = self._create_event(event_dict)
                 cal.add_component(ical_event)
             except Exception as e:
                 # Log error but continue processing other events
-                print(f"Warning: Failed to add event {event_data.get('title', 'Unknown')}: {str(e)}")
+                title = event_data.title if hasattr(event_data, 'title') else event_data.get('title', 'Unknown')
+                print(f"Warning: Failed to add event {title}: {str(e)}")
         
         return cal.to_ical().decode('utf-8')
     
@@ -71,7 +78,7 @@ class ICSGenerator:
         Create an iCalendar event from event data
         
         Args:
-            event_data: Dictionary containing event information
+            event_data: Dictionary containing event information with startDateTime and endDateTime
             
         Returns:
             ICalEvent object
@@ -82,22 +89,23 @@ class ICSGenerator:
         event.add('summary', event_data['title'])
         event.add('uid', event_data.get('id', self._generate_uid(event_data)))
         
-        # Date and time
-        start_dt = self._parse_datetime(
-            event_data['date'], 
-            event_data.get('time', '00:00')
-        )
-        event.add('dtstart', start_dt)
+        # Parse startDateTime and endDateTime in ISO format
+        start_dt = datetime.fromisoformat(event_data['startDateTime'])
+        end_dt = datetime.fromisoformat(event_data['endDateTime'])
         
-        # Duration or end time
-        duration_minutes = event_data.get('duration', 60)
-        end_dt = start_dt + timedelta(minutes=duration_minutes)
+        # Make timezone aware if not already
+        if start_dt.tzinfo is None:
+            start_dt = self.default_timezone.localize(start_dt)
+        if end_dt.tzinfo is None:
+            end_dt = self.default_timezone.localize(end_dt)
+        
+        event.add('dtstart', start_dt)
         event.add('dtend', end_dt)
         
-        # Optional fields
-        if event_data.get('location'):
-            event.add('location', event_data['location'])
+        # Required location field
+        event.add('location', event_data['location'])
         
+        # Optional description
         if event_data.get('description'):
             event.add('description', event_data['description'])
         
@@ -119,7 +127,7 @@ class ICSGenerator:
     
     def _parse_datetime(self, date_str: str, time_str: str) -> datetime:
         """
-        Parse date and time strings into timezone-aware datetime
+        Parse date and time strings into timezone-aware datetime (legacy format support)
         
         Args:
             date_str: Date in YYYY-MM-DD format
@@ -259,4 +267,16 @@ class ICSGenerator:
             results['is_valid'] = False
             results['errors'].append(f'Parse error: {str(e)}')
         
-        return results
+        return results   
+     
+    def save_calendar_to_file(self, cal: Calendar, filename: str):
+        """
+        Save calendar to .ics file
+        
+        Args:
+            cal: Calendar object to save
+            filename: Path to save the .ics file
+        """
+        with open(filename, 'wb') as f:
+            f.write(cal.to_ical())
+        print(f"Calendar saved to {filename}")
