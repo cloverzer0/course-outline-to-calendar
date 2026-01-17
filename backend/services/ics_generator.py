@@ -87,7 +87,9 @@ class ICSGenerator:
         
         # Required fields
         event.add('summary', event_data['title'])
-        event.add('uid', event_data.get('id', self._generate_uid(event_data)))
+        # Generate UID if not provided or if None
+        uid = event_data.get('id') or self._generate_uid(event_data)
+        event.add('uid', uid)
         
         # Parse startDateTime and endDateTime in ISO format
         start_dt = datetime.fromisoformat(event_data['startDateTime'])
