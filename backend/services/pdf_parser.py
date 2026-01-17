@@ -1,4 +1,5 @@
 import os
+import sys
 from datetime import datetime
 from typing import List, Dict, Optional
 from pathlib import Path
@@ -8,27 +9,19 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 
+# Add parent directory to path to import models
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from models.event import CalendarEvent, EventType, RecurrenceRule, RecurrenceFrequency
+
 # Load environment variables from root directory
 root_dir = Path(__file__).parent.parent.parent
 load_dotenv(root_dir / '.env')
 
-class EventInfo(BaseModel):
-    """Schema for a single event extracted from course outline."""
-    title: str = Field(description="Event title (e.g., 'PSYC1001F - Lecture', 'PSYC1001F - Quiz 1', 'PSYC1001F - Assignment 2')")
-    event_type: str = Field(description="Type of event: 'lecture', 'exam', 'quiz', 'assignment', 'project', 'office_hours', or 'other'")
-    start_datetime: str = Field(description="Start date and time in ISO format (e.g., 2022-09-13T18:05:00)")
-    end_datetime: str = Field(description="End date and time in ISO format (e.g., 2022-09-13T20:55:00)")
-    location: str = Field(description="Location (e.g., 'University Centre 231', 'Online', 'TBD')")
-    description: Optional[str] = Field(default="", description="Brief description or additional notes")
-    recurrence: Optional[str] = Field(default=None, description="Recurrence pattern if repeating (e.g., 'WEEKLY', 'None' for one-time events)")
-    days_of_week: Optional[str] = Field(default=None, description="Days of week for recurring events (e.g., 'TU', 'MO,WE', or None)")
-    recurrence_end_date: Optional[str] = Field(default=None, description="End date for recurring events in ISO format (e.g., 2022-12-07)")
-
-
+# Wrapper for LLM output
 class CourseEventsOutput(BaseModel):
     """Schema for all events extracted from course outline."""
     course_name: str = Field(description="The name or code of the course (e.g., 'PSYC1001F')")
-    events: List[EventInfo] = Field(description="List of all events (lectures, quizzes, assignments, exams, etc.) found in the outline")
+    events: List[CalendarEvent] = Field(description="List of all events (lectures, quizzes, assignments, exams, etc.) found in the outline")
 
 
 class PDFParser:
@@ -95,15 +88,17 @@ Extract these types of events:
 7. **OTHER**: Any other course-related events
 
 For each event, extract:
-- title: Format as "CourseName - EventType" or "CourseName - EventType #" (e.g., "PSYC1001F - Lecture", "PSYC1001F - Quiz 1", "PSYC1001F - Assignment 2")
-- event_type: One of: lecture, exam, quiz, assignment, project, office_hours, other
-- start_datetime: Start date and time in ISO format (YYYY-MM-DDTHH:MM:SS)
-- end_datetime: End date and time in ISO format (YYYY-MM-DDTHH:MM:SS)
-- location: Physical location or "Online" or "TBD"
+- title: Format as "CourseName - EventType" or "CourseName - EventType #" (e.g., "PSYC1001F - Lecture", "PSYC1001F - Quiz 1")
+- startDateTime: Start date and time in ISO format (YYYY-MM-DDTHH:MM:SS)
+- endDateTime: End date and time in ISO format (YYYY-MM-DDTHH:MM:SS)
+- type: One of: "lecture", "exam", "assignment", "project", "office_hours", "other"
+- location: Physical location or "Online" or "TBD" (optional, defaults to "TBD")
 - description: Brief description (optional)
-- recurrence: "WEEKLY" for recurring events, null for one-time events
-- days_of_week: For recurring events, day codes like "TU", "MO,WE,FR", etc. (null for one-time)
-- recurrence_end_date: For recurring events, the last occurrence date in ISO format (null for one-time)
+- recurrence: For recurring events, provide an object with:
+  - frequency: "weekly", "daily", or "monthly"
+  - daysOfWeek: Array of integers [0-6] where 0=Sunday, 1=Monday, 2=Tuesday, etc.
+  - endDate: Last occurrence date in ISO format (optional)
+  For one-time events, set recurrence to null
 
 IMPORTANT INSTRUCTIONS:
 - For LECTURES: Create ONE recurring event with the schedule (e.g., every Tuesday 6:05-8:55 PM)
@@ -133,10 +128,10 @@ Return the course name and all events found in the outline.
             # Call the LLM with structured output
             response = self.structured_llm.invoke(messages)
             
-            # Convert Pydantic model to dictionary
+            # Convert Pydantic model to dictionary for inspection if needed
             result = {
                 'course_name': response.course_name,
-                'events': [event.model_dump() for event in response.events]
+                'events': response.events  # Already CalendarEvent objects
             }
 
             # print(f"Extracted {len(result['events'])} events for course: {result['course_name']}")
@@ -148,79 +143,23 @@ Return the course name and all events found in the outline.
         except Exception as e:
             raise Exception(f"Error parsing events with LLM: {str(e)}")
     
-    def convert_to_standard_format(self, events_data: Dict) -> List[Dict]:
-        """Convert parsed events to standard format expected by calendar"""
-        standardized = []
-        course_name = events_data.get('course_name', 'Unknown Course')
-        events = events_data.get('events', [])
-        
-        for idx, event in enumerate(events):
-            try:
-                # Parse dates
-                start_date_str = event.get('start_datetime', '')
-                end_date_str = event.get('end_datetime', '')
-                
-                try:
-                    start_date = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
-                except:
-                    start_date = datetime.now()
-                
-                try:
-                    end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00'))
-                except:
-                    end_date = datetime.now()
-                
-                # Build recurrence rules
-                recurrence_rules = ""
-                if event.get('recurrence') == 'WEEKLY' and event.get('days_of_week'):
-                    recurrence_rules = f"FREQ=WEEKLY;BYDAY={event['days_of_week']}"
-                    if event.get('recurrence_end_date'):
-                        # Convert date to RRULE format (YYYYMMDD)
-                        try:
-                            end_dt = datetime.fromisoformat(event['recurrence_end_date'])
-                            recurrence_rules += f";UNTIL={end_dt.strftime('%Y%m%d')}"
-                        except:
-                            pass
-                
-                standardized_event = {
-                    'title': event.get('title', f'{course_name} - Event {idx + 1}'),
-                    'start_date': start_date.isoformat(),
-                    'end_date': end_date.isoformat(),
-                    'location': event.get('location', 'TBD'),
-                    'description': event.get('description', ''),
-                    'event_type': event.get('event_type', 'other'),
-                    'recurrence_rules': recurrence_rules,
-                    'original_data': event
-                }
-                
-                standardized.append(standardized_event)
-                
-            except Exception as e:
-                print(f"Warning: Skipping event {idx + 1}: {str(e)}")
-                continue
-        
-        return standardized
-    
-    def parse_pdf_file(self, pdf_path: str) -> List[Dict]:
-        """Main method to parse PDF and return standardized events"""
+    def parse_pdf_file(self, pdf_path: str) -> List[CalendarEvent]:
+        """Main method to parse PDF and return CalendarEvent objects"""
         print(f"Parsing PDF file: {pdf_path}")
         
         # Step 1: Extract text from PDF
         pdf_text = self.extract_text_from_pdf(pdf_path)
         print(f"Extracted {len(pdf_text)} characters from PDF")
         
-        # Step 2: Use LLM to parse events
+        # Step 2: Use LLM to parse events - returns CalendarEvent objects directly
         events_data = self.parse_courses_from_text(pdf_text)
-        print(f"Extracted {len(events_data.get('events', []))} events for course: {events_data.get('course_name', 'Unknown')}")
+        calendar_events = events_data['events']
+        print(f"Extracted {len(calendar_events)} CalendarEvent objects for course: {events_data.get('course_name', 'Unknown')}")
         
-        # Step 3: Convert to standard format
-        standardized_events = self.convert_to_standard_format(events_data)
-        print(f"Standardized {len(standardized_events)} events")
-        
-        if not standardized_events:
+        if not calendar_events:
             raise Exception("No valid events found in PDF")
         
-        return standardized_events
+        return calendar_events
 
 # Example usage
 if __name__ == "__main__":
@@ -236,34 +175,69 @@ if __name__ == "__main__":
         # Parse the PDF file
         events = parser.parse_pdf_file(pdf_path)
         
-        print(f"\n✓ Successfully extracted {len(events)} events!\n")
-        print("=" * 80)
+        print(f"\n{'='*80}")
+        print(f"✓ Successfully extracted {len(events)} CalendarEvent objects!")
+        print(f"{'='*80}\n")
         
         # Group events by type for display
         event_types = {}
         for event in events:
-            event_type = event.get('event_type', 'other')
+            # Handle both string and enum types
+            event_type = event.type.value if hasattr(event.type, 'value') else event.type
             if event_type not in event_types:
                 event_types[event_type] = []
             event_types[event_type].append(event)
         
-        # Print each event type group
+        # Print summary
+        print("EVENT SUMMARY:")
+        print("-" * 80)
         for event_type, events_list in event_types.items():
-            print(f"\n{event_type.upper()} ({len(events_list)} event{'s' if len(events_list) > 1 else ''}):")
-            print("-" * 80)
-            
-            for event in events_list:
-                print(f"\n  Title: {event.get('title', 'N/A')}")
-                print(f"  Start: {event.get('start_date', 'N/A')}")
-                print(f"  End: {event.get('end_date', 'N/A')}")
-                print(f"  Location: {event.get('location', 'N/A')}")
-                if event.get('recurrence_rules'):
-                    print(f"  Recurrence: {event.get('recurrence_rules', 'N/A')}")
-                description = event.get('description', '')
-                if description:
-                    print(f"  Description: {description[:100]}{'...' if len(description) > 100 else ''}")
+            print(f"  {event_type.upper()}: {len(events_list)} event(s)")
+        print()
         
-        print("\n" + "=" * 80)
+        # Print each event type group with details
+        for event_type, events_list in event_types.items():
+            print(f"\n{event_type.upper()} EVENTS ({len(events_list)}):")
+            print("=" * 80)
+            
+            for idx, event in enumerate(events_list, 1):
+                print(f"\n  [{idx}] {event.title}")
+                
+                # Use helper properties from CalendarEvent
+                print(f"      Start:      {event.startDateTime} ({event.start_dt.strftime('%a, %b %d, %Y at %I:%M %p')})")
+                print(f"      End:        {event.endDateTime} ({event.end_dt.strftime('%a, %b %d, %Y at %I:%M %p')})")
+                print(f"      Duration:   {event.duration_minutes} minutes")
+                print(f"      Location:   {event.location}")
+                # Handle both string and enum types
+                type_value = event.type.value if hasattr(event.type, 'value') else event.type
+                print(f"      Type:       {type_value}")
+                
+                if event.recurrence:
+                    days_names = {0: 'Sun', 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat'}
+                    days_str = ', '.join([days_names[d] for d in event.recurrence.daysOfWeek])
+                    # Handle both string and enum frequency
+                    freq_value = event.recurrence.frequency.value if hasattr(event.recurrence.frequency, 'value') else event.recurrence.frequency
+                    print(f"      Recurrence: {freq_value.upper()} on {days_str}")
+                    if event.recurrence.endDate:
+                        print(f"      Until:      {event.recurrence.endDate}")
+                
+                if event.description:
+                    desc_preview = event.description[:80] + '...' if len(event.description) > 80 else event.description
+                    print(f"      Description: {desc_preview}")
+                
+                print(f"      Confidence: {event.confidence}")
+                print(f"      Needs Review: {event.needsReview}")
+        
+        print(f"\n{'='*80}")
+        
+        # Show sample JSON output
+        print("\n\nSAMPLE JSON OUTPUT (first event):")
+        print("-" * 80)
+        print(events[0].model_dump_json(indent=2))
+        
+        print(f"\n{'='*80}")
+        print("✓ All tests passed successfully!")
+        print(f"{'='*80}\n")
         
     except Exception as e:
         print(f"✗ Error: {str(e)}")
