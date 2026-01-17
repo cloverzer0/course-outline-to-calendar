@@ -10,7 +10,7 @@ Any changes to this model impact the entire system:
 - Calendar generation (Engineer 4)
 """
 
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from typing import Optional, List
 from enum import Enum
@@ -152,7 +152,7 @@ class CalendarEvent(BaseModel):
 
     @field_validator('endDateTime')
     @classmethod
-    def validate_end_after_start(cls, v, info):
+    def validate_end_after_start(cls, v, values):
         """Ensure end datetime is after start datetime"""
         if 'startDateTime' in info.data:
             start = datetime.fromisoformat(info.data['startDateTime'].replace('Z', '+00:00'))
@@ -161,9 +161,26 @@ class CalendarEvent(BaseModel):
                 raise ValueError("End datetime must be after start datetime")
         return v
 
-    model_config = ConfigDict(
-        use_enum_values=True,
-        json_schema_extra={
+
+    @property
+    def start_dt(self) -> datetime:
+        """Get start as Python datetime"""
+        return datetime.fromisoformat(self.startDateTime.replace('Z', '+00:00'))
+    
+    @property
+    def end_dt(self) -> datetime:
+        """Get end as Python datetime"""
+        return datetime.fromisoformat(self.endDateTime.replace('Z', '+00:00'))
+    
+    @property
+    def duration_minutes(self) -> int:
+        """Calculate duration in minutes"""
+        return int((self.end_dt - self. start_dt).total_seconds() / 60)
+
+    class Config:
+        """Pydantic model configuration"""
+        use_enum_values = True
+        json_schema_extra = {
             "example": {
                 "title": "CS 301 - Data Structures",
                 "startDateTime": "2026-01-20T14:00:00",
@@ -181,7 +198,6 @@ class CalendarEvent(BaseModel):
                 "confidence": 0.95
             }
         }
-    )
 
 
 class CalendarEventList(BaseModel):
