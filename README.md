@@ -257,9 +257,9 @@ course-outline-to-calendar/
 
 **Team Size:** 4 Engineers
 
-### 🔑 Global Dependency (Applies to Everyone)
+### Global Dependency (Applies to Everyone)
 
-#### Event Data Model & API Contract (🚨 Highest Priority)
+#### Event Data Model & API Contract (Highest Priority)
 
 - **Must be defined and locked early in Phase 1**
 - **Shared by Engineers 1, 2, 3, and 4**
@@ -279,11 +279,11 @@ Any late change impacts:
 - `recurrence`
 - `needsReview` (optional / confidence flag)
 
-⚠️ **Changing this late causes widespread rework and integration risk.**
+**Changing this late causes widespread rework and integration risk.**
 
 ---
 
-### 👨‍💻 Engineer 1 — Frontend & User Experience
+### Engineer 1 — Frontend & User Experience
 
 **Focus:** User interaction, review flow, and usability
 
@@ -334,7 +334,7 @@ frontend/
 
 ---
 
-### 👨‍💻 Engineer 2 — Backend API & File Processing
+### Engineer 2 — Backend API & File Processing
 
 **Focus:** Core backend pipeline and data flow
 
@@ -386,7 +386,7 @@ backend/
 
 ---
 
-### 👨‍💻 Engineer 3 — AI / NLP Event Extraction
+### Engineer 3 — AI / NLP Event Extraction
 
 **Focus:** Intelligence and automation
 
@@ -431,7 +431,7 @@ ai/
 
 ---
 
-### 👨‍💻 Engineer 4 — Calendar Generation, Validation & QA
+### Engineer 4 — Calendar Generation, Validation & QA
 
 **Focus:** Output correctness, reliability, and testing
 
@@ -477,7 +477,7 @@ backend/tests/
 
 ---
 
-### 🔄 Collaboration & Integration Points
+### Collaboration & Integration Points
 
 | Area | Engineers Involved |
 |------|-------------------|
@@ -487,25 +487,25 @@ backend/tests/
 | Calendar Compatibility | Eng 1, 4 |
 | Demo Flow | All |
 
-### 🚨 Critical Integration Points (High Risk)
+### Critical Integration Points (High Risk)
 
-#### 1️⃣ Event Schema Lock (Highest Priority)
+#### Event Schema Lock (Highest Priority)
 - **Engineers:** Eng 2 + 3 + 4
 - Must be finalized before Phase 4
 - Affects AI output, backend validation, frontend UI, and calendar generation
 
-#### 2️⃣ API Contract Freeze
+#### API Contract Freeze
 - **Engineers:** Eng 1 + 2
 - Upload, extract, and export endpoints
 - Frontend may mock early, but contracts must freeze before demo
 
-#### 3️⃣ Recurring Event Logic
+#### Recurring Event Logic
 - **Engineers:** Eng 3 + 4
 - AI detects recurrence
 - Calendar generator encodes RRULE
 - Requires shared interpretation of lectures and office hours
 
-### 🧭 Parallel Execution Strategy
+### Parallel Execution Strategy
 
 #### Early Parallel Work
 - **Eng 1:** UI mockups
