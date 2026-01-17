@@ -10,7 +10,7 @@ Any changes to this model impact the entire system:
 - Calendar generation (Engineer 4)
 """
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from typing import Optional, List
 from enum import Enum
@@ -61,7 +61,8 @@ class RecurrenceRule(BaseModel):
         description="Number of occurrences (alternative to endDate)"
     )
 
-    @validator('daysOfWeek')
+    @field_validator('daysOfWeek')
+    @classmethod
     def validate_days_of_week(cls, v):
         """Ensure days of week are valid (0-6)"""
         if v is not None:
@@ -139,7 +140,8 @@ class CalendarEvent(BaseModel):
         description="AI extraction confidence score (0.0 to 1.0)"
     )
 
-    @validator('startDateTime', 'endDateTime')
+    @field_validator('startDateTime', 'endDateTime')
+    @classmethod
     def validate_datetime_format(cls, v):
         """Ensure datetime strings are in valid ISO 8601 format"""
         try:
@@ -148,15 +150,33 @@ class CalendarEvent(BaseModel):
             raise ValueError(f"Invalid datetime format: {v}. Expected ISO 8601 (YYYY-MM-DDTHH:MM:SS)")
         return v
 
-    @validator('endDateTime')
-    def validate_end_after_start(cls, v, values):
+    @field_validator('endDateTime')
+    @classmethod
+    def validate_end_after_start(cls, v, info):
         """Ensure end datetime is after start datetime"""
-        if 'startDateTime' in values:
-            start = datetime.fromisoformat(values['startDateTime'].replace('Z', '+00:00'))
+        # In Pydantic v2, use info.data to access other field values
+        if 'startDateTime' in info.data:
+            start = datetime.fromisoformat(info.data['startDateTime'].replace('Z', '+00:00'))
             end = datetime.fromisoformat(v.replace('Z', '+00:00'))
             if end <= start:
                 raise ValueError("End datetime must be after start datetime")
         return v
+
+
+    @property
+    def start_dt(self) -> datetime:
+        """Get start as Python datetime"""
+        return datetime.fromisoformat(self.startDateTime.replace('Z', '+00:00'))
+    
+    @property
+    def end_dt(self) -> datetime:
+        """Get end as Python datetime"""
+        return datetime.fromisoformat(self.endDateTime.replace('Z', '+00:00'))
+    
+    @property
+    def duration_minutes(self) -> int:
+        """Calculate duration in minutes"""
+        return int((self.end_dt - self. start_dt).total_seconds() / 60)
 
     class Config:
         """Pydantic model configuration"""
