@@ -133,12 +133,12 @@ course-outline-to-calendar/
   - AI/NLP processing (LangChain or similar)
   - Calendar generation using iCalendar (.ics) standard
 - Define a unified calendar event data model:
-  - Title
-  - Start date/time
-  - End date/time
-  - Location
-  - Description
-  - Recurrence rules
+  - Title/Course Name (required)
+  - Start date/time (required)
+  - End date/time (required)
+  - Location (required)
+  - Description (optional)
+  - Recurrence rules (icalendar supports this)
 - Set up repository structure, environment configuration, and basic CI workflow
 
 **Deliverable:** Running skeleton app with frontend ↔ backend communication
