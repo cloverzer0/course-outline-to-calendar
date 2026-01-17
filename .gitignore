@@ -57,3 +57,5 @@ htmlcov/
 *.pyc
 *.pyo
 
+# notes
+notes/
