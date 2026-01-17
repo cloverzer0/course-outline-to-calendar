@@ -12,7 +12,7 @@ Any changes to this model impact the entire system:
 
 from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict
 from enum import Enum
 
 
@@ -217,6 +217,117 @@ class CalendarEventList(BaseModel):
         default=0,
         description="Number of events flagged for review"
     )
+
+
+class CourseCalendar(BaseModel):
+    """
+    Calendar for a single course
+    Used when processing multiple course outlines
+    """
+    course_name: str = Field(
+        ...,
+        min_length=1,
+        max_length=200,
+        description="Full course name (e.g., 'Introduction to Data Structures')"
+    )
+    course_code: str = Field(
+        ...,
+        min_length=1,
+        max_length=50,
+        description="Course code (e.g., 'CS 301')"
+    )
+    semester: Optional[str] = Field(
+        default=None,
+        max_length=50,
+        description="Semester/term (e.g., 'Winter 2026')"
+    )
+    instructor: Optional[str] = Field(
+        default=None,
+        max_length=100,
+        description="Course instructor name"
+    )
+    events: List[CalendarEvent] = Field(
+        default_factory=list,
+        description="All events for this course"
+    )
+    
+    @property
+    def event_count(self) -> int:
+        """Total number of events in this course"""
+        return len(self.events)
+    
+    @property
+    def needs_review_count(self) -> int:
+        """Number of events flagged for review"""
+        return sum(1 for event in self.events if event.needsReview)
+
+
+class MultiCourseCalendar(BaseModel):
+    """
+    Collection of calendars from multiple course outlines
+    Used when user uploads multiple PDF files
+    """
+    courses: List[CourseCalendar] = Field(
+        default_factory=list,
+        description="List of course calendars"
+    )
+    
+    @property
+    def total_courses(self) -> int:
+        """Total number of courses"""
+        return len(self.courses)
+    
+    @property
+    def total_events(self) -> int:
+        """Total number of events across all courses"""
+        return sum(course.event_count for course in self.courses)
+    
+    @property
+    def total_needs_review(self) -> int:
+        """Total events flagged for review across all courses"""
+        return sum(course.needs_review_count for course in self.courses)
+    
+    def get_course_by_code(self, course_code: str) -> Optional[CourseCalendar]:
+        """
+        Find a course by its code
+        
+        Args:
+            course_code: Course code to search for
+            
+        Returns:
+            CourseCalendar if found, None otherwise
+        """
+        return next((c for c in self.courses if c.course_code == course_code), None)
+    
+    def get_all_events(self) -> List[CalendarEvent]:
+        """
+        Get all events from all courses as a flat list
+        
+        Returns:
+            List of all CalendarEvent objects
+        """
+        return [event for course in self.courses for event in course.events]
+    
+    def get_events_by_type(self, event_type: EventType) -> List[CalendarEvent]:
+        """
+        Get all events of a specific type across all courses
+        
+        Args:
+            event_type: Type of events to filter
+            
+        Returns:
+            List of matching events
+        """
+        return [event for event in self.get_all_events() if event.type == event_type]
+    
+    def add_course(self, course: CourseCalendar) -> None:
+        """
+        Add a course to the collection
+        
+        Args:
+            course: CourseCalendar to add
+        """
+        self.courses.append(course)
 
 
 # Legacy format support for backward compatibility

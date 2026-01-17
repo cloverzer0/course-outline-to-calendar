@@ -1,0 +1,122 @@
+/* Minimal FullCalendar styling (since CSS files aren't present in node_modules) */
+
+.fc {
+  font-family: inherit;
+  color: hsl(var(--foreground));
+}
+
+.fc .fc-toolbar-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.fc .fc-button {
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+  padding: 0.4rem 0.7rem;
+  border-radius: 0.6rem;
+}
+
+.fc .fc-button:hover {
+  background: hsl(var(--accent));
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active {
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  border-color: hsl(var(--foreground));
+}
+
+.fc .fc-daygrid-day-frame,
+.fc .fc-timegrid-slot {
+  border-color: hsl(var(--border));
+}
+
+.fc .fc-col-header-cell,
+.fc .fc-scrollgrid,
+.fc .fc-scrollgrid-section {
+  border-color: hsl(var(--border));
+}
+
+.fc .fc-daygrid-day-number {
+  color: hsl(var(--foreground));
+  opacity: 0.8;
+}
+
+.fc .fc-event {
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
+  border-radius: 0.5rem;
+  padding: 2px 6px;
+}
+
+.dark .fc .fc-button {
+  background: hsl(var(--background));
+}
+
+.dark .fc .fc-event {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.fc,
+.fc .fc-view-harness,
+.fc .fc-scrollgrid,
+.fc .fc-scrollgrid-section,
+.fc .fc-scrollgrid-section > td,
+.fc .fc-scrollgrid-section-header,
+.fc .fc-scrollgrid-section-body {
+  background: hsl(var(--background));
+}
+
+/* Header row (Sun/Mon/Tue...) */
+.fc .fc-col-header,
+.fc .fc-col-header-cell,
+.fc .fc-col-header-cell-cushion {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+/* Day cells (month view) */
+.fc .fc-daygrid-day,
+.fc .fc-daygrid-day-frame {
+  background: hsl(var(--background));
+}
+
+/* Timegrid surfaces (week/day view) */
+.fc .fc-timegrid,
+.fc .fc-timegrid-body,
+.fc .fc-timegrid-col-frame,
+.fc .fc-timegrid-slot-lane,
+.fc .fc-timegrid-axis-frame,
+.fc .fc-timegrid-slot {
+  background: hsl(var(--background));
+}
+
+/* Borders should match theme */
+.fc-theme-standard td,
+.fc-theme-standard th,
+.fc-theme-standard .fc-scrollgrid {
+  border-color: hsl(var(--border));
+}
+
+/* Optional: “today” highlight should be subtle in both themes */
+.fc .fc-day-today {
+  background: hsl(var(--accent));
+}
+
+/* Make sure header text doesn’t get washed out */
+.fc .fc-col-header-cell-cushion {
+  opacity: 0.9;
+  font-weight: 600;
+}
+
+.fc .fc-today-button {
+  text-transform: capitalize;
+}
+
+.fc .fc-today-button {
+  text-transform: capitalize;
+  font-weight: 500;
+}
