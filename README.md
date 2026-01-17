@@ -138,7 +138,7 @@ course-outline-to-calendar/
   - End date/time (required)
   - Location (required)
   - Description (optional)
-  - Recurrence rules (icalendar supports this)
+  - Recurrence rules (icalendar supports this) (required)
 - Set up repository structure, environment configuration, and basic CI workflow
 
 **Deliverable:** Running skeleton app with frontend ↔ backend communication
