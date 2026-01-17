@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from models.event import CalendarEvent, EventType
 
 # API Routes
-from api.routes import upload, extract
+from api.routes import upload, extract, events
 
 
 # Create the FastAPI app instance
@@ -26,6 +26,7 @@ app.add_middleware(
 # Register the upload router
 app.include_router(upload.router)
 app.include_router(extract.router)
+app.include_router(events.router)
 
 
 @app.get("/")
@@ -33,10 +34,12 @@ async def root():
     return {
         "message": "Course Outline to Calendar API is running! ",
         "status": "healthy",
-        "endpoints": {
+         "endpoints": {
             "docs": "/docs",
             "upload": "/api/upload/",
-            "extract": "/api/extract/{file_id}"
+            "extract": "/api/extract/{file_id}",
+            "events": "/api/events/{file_id}",
+            "stats": "/api/events/{file_id}/stats"
         }
     }
 

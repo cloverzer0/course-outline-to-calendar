@@ -9,6 +9,7 @@ from typing import List
 from models.event import CalendarEvent, CalendarEventList
 from services.ai_service import extract_events_from_pdf
 from config import UPLOAD_DIR
+from services.event_storage import event_storage
 
 router = APIRouter(
     prefix="/api/extract",
@@ -56,6 +57,9 @@ async def extract_events(file_id: str):
             detail=f"Failed to extract events:  {str(e)}"
         )
     
+    # Store events in memory for later retrieval
+    event_storage.store_events(file_id, events)
+
     # Count events needing review
     needs_review_count = sum(1 for event in events if event.needsReview)
     
