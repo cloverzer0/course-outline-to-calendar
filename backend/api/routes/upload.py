@@ -6,7 +6,7 @@ Handles course outline PDF uploads with validation
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from pathlib import Path
 import uuid
-import shutil
+from config import UPLOAD_DIR, EXTRACTED_TEXT_DIR, ALLOWED_EXTENSIONS, MAX_FILE_SIZE
 from datetime import datetime
 
 # Create a router. All routes start with /api/upload
@@ -16,13 +16,9 @@ router = APIRouter(
     tags=["upload"]  
 )
 
-# Configuration
-UPLOAD_DIR = Path("data/uploads")
-ALLOWED_EXTENSIONS = {".pdf"}
-MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024  # 10 GB in bytes
-
-# Ensure upload directory exists
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+# Ensure the directory exists
+UPLOAD_DIR. mkdir(parents=True, exist_ok=True)
+EXTRACTED_TEXT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def validate_file_extension(filename: str) -> bool:
