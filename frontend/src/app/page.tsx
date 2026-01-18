@@ -13,9 +13,20 @@ export default function HomePage() {
   const [files, setFiles] = React.useState<File[]>([])
   const [showUploader, setShowUploader] = React.useState(false)
   const [submitting, setSubmitting] = React.useState(false)
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null)
 
-  function openUploader() {
-    setShowUploader(true)
+  function openFilePicker() {
+    fileInputRef.current?.click()
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const selectedFiles = Array.from(e.target.files ?? [])
+    if (selectedFiles.length > 0) {
+      setFiles(selectedFiles)
+      setShowUploader(true)
+    }
+    // Reset input to allow re-selecting same file
+    e.target.value = ""
   }
 
   async function handleGenerate(selected: File[]) {
@@ -36,9 +47,20 @@ export default function HomePage() {
 
   return (
     <div className="relative min-h-screen">
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="application/pdf"
+        multiple
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+
       <BackgroundPaths
         title="Course Outline to Calendar"
-        onUploadClick={openUploader}
+        onUploadClick={openFilePicker}
+        hideButton={showUploader}
       />
 
       {/* Uploader panel */}

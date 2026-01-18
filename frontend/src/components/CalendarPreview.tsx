@@ -13,6 +13,11 @@ export type CalendarPreviewEvent = {
   start: Date
   end?: Date
   location?: string
+  recurrence?: {
+    frequency: string
+    daysOfWeek?: number[]
+    endDate?: string
+  }
 }
 
 export function CalendarPreview({ events }: { events: CalendarPreviewEvent[] }) {
@@ -22,16 +27,42 @@ export function CalendarPreview({ events }: { events: CalendarPreviewEvent[] }) 
     event: CalendarPreviewEvent
   } | null>(null)
   const tooltipRef = React.useRef<HTMLDivElement>(null)
+  const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
+  const mousePositionRef = React.useRef<{ x: number; y: number }>({ x: 0, y: 0 })
 
   const fcEvents = React.useMemo(
     () =>
-      events.map((e) => ({
-        id: e.id,
-        title: e.title,
-        start: e.start,
-        end: e.end,
-        extendedProps: { location: e.location },
-      })),
+      events.map((e) => {
+        const event: any = {
+          id: e.id,
+          title: e.title,
+          extendedProps: { location: e.location },
+        }
+
+        // Add recurrence rules if present
+        if (e.recurrence?.frequency === 'weekly' && e.recurrence.daysOfWeek) {
+          // For recurring events, use startTime/endTime instead of start/end
+          const startDate = new Date(e.start)
+          const endDate = e.end ? new Date(e.end) : startDate
+          
+          // Extract time in HH:MM:SS format
+          event.startTime = startDate.toTimeString().substring(0, 8)
+          event.endTime = endDate.toTimeString().substring(0, 8)
+          event.daysOfWeek = e.recurrence.daysOfWeek
+          
+          // Set the date range for the recurring series
+          event.startRecur = startDate.toISOString().split('T')[0]
+          if (e.recurrence.endDate) {
+            event.endRecur = e.recurrence.endDate
+          }
+        } else {
+          // For one-time events, use start/end as usual
+          event.start = e.start
+          event.end = e.end
+        }
+
+        return event
+      }),
     [events],
   )
 
@@ -100,23 +131,41 @@ export function CalendarPreview({ events }: { events: CalendarPreviewEvent[] }) 
         events={fcEvents}
         eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: true }}
         eventDidMount={(info) => {
-          const loc = info.event.extendedProps["location"]
-          if (loc) info.el.title = `${info.event.title}\n${loc}`
+          // Track mouse position on hover
+          info.el.addEventListener("mousemove", (e) => {
+            mousePositionRef.current = {
+              x: e.clientX,
+              y: e.clientY
+            }
+          })
 
           // Add hover handlers
           info.el.addEventListener("mouseenter", () => {
             const event = events.find((ev) => ev.id === info.event.id)
             if (event) {
-              const rect = info.el.getBoundingClientRect()
-              setTooltip({
-                x: rect.left + window.scrollX,
-                y: rect.top + window.scrollY - 10,
-                event,
-              })
+              // Clear any existing timeout
+              if (hoverTimeoutRef.current) {
+                clearTimeout(hoverTimeoutRef.current)
+              }
+              
+              // Set 3-second delay before showing tooltip
+              hoverTimeoutRef.current = setTimeout(() => {
+                setTooltip({
+                  x: mousePositionRef.current.x,
+                  y: mousePositionRef.current.y - 20, // 20px above cursor
+                  event,
+                })
+              }, 1000)
             }
           })
 
           info.el.addEventListener("mouseleave", () => {
+            // Clear the timeout if user stops hovering before 3 seconds
+            if (hoverTimeoutRef.current) {
+              clearTimeout(hoverTimeoutRef.current)
+              hoverTimeoutRef.current = null
+            }
+            
             // Delay hiding to allow moving to tooltip
             setTimeout(() => {
               if (!tooltipRef.current?.matches(":hover")) {
@@ -143,83 +192,43 @@ export function CalendarPreview({ events }: { events: CalendarPreviewEvent[] }) 
       {tooltip && (
         <div
           ref={tooltipRef}
-          className="pointer-events-auto fixed z-50 w-96 rounded-lg border border-border bg-card p-5 shadow-xl"
+          className="pointer-events-auto fixed z-50 w-64 rounded-md border border-border bg-card p-3 shadow-lg"
           style={{
             left: `${tooltip.x}px`,
             top: `${tooltip.y}px`,
-            transform: "translateY(-100%)",
+            transform: "translate(-50%, -100%)", // Center horizontally, position above
           }}
           onMouseLeave={() => setTooltip(null)}
         >
-          <div className="space-y-4">
+          <div className="space-y-2">
             {/* Title */}
             <div>
-              <h3 className="line-clamp-2 text-lg font-bold text-foreground">
+              <h3 className="line-clamp-2 text-sm font-semibold text-foreground">
                 {tooltip.event.title}
               </h3>
-              {isToday(tooltip.event.start) && (
-                <p className="mt-1 inline-block rounded bg-accent px-2 py-0.5 text-xs text-accent-foreground">
-                  🔴 Today
-                </p>
-              )}
             </div>
 
-            {/* Date */}
-            <div className="flex items-start gap-3 border-b border-border pb-2">
-              <CalendarIcon className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
-              <div className="text-sm">
-                <p className="font-medium text-foreground">
-                  {formatDate(tooltip.event.start)}
-                </p>
-                {tooltip.event.end &&
-                  tooltip.event.start.toDateString() !==
-                    tooltip.event.end.toDateString() && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      → {formatDate(tooltip.event.end)}
-                    </p>
-                  )}
-              </div>
+            {/* Date & Time */}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <CalendarIcon className="h-3 w-3 flex-shrink-0" />
+              <span>{formatDate(tooltip.event.start)}</span>
             </div>
-
-            {/* Time */}
-            <div className="flex items-start gap-3 border-b border-border pb-2">
-              <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
-              <div className="text-sm">
-                <p className="font-medium text-foreground">
-                  {formatTime(tooltip.event.start)}
-                </p>
-                {tooltip.event.end && (
-                  <>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      → {formatTime(tooltip.event.end)}
-                    </p>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Duration:{" "}
-                      <span className="font-semibold">
-                        {getDuration(tooltip.event.start, tooltip.event.end)}
-                      </span>
-                    </p>
-                  </>
-                )}
-              </div>
+            
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3 flex-shrink-0" />
+              <span>
+                {formatTime(tooltip.event.start)}
+                {tooltip.event.end && ` - ${formatTime(tooltip.event.end)}`}
+              </span>
             </div>
 
             {/* Location */}
             {tooltip.event.location && (
-              <div className="flex items-start gap-3">
-                <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                <div className="text-sm">
-                  <p className="line-clamp-2 font-medium text-foreground">
-                    {tooltip.event.location}
-                  </p>
-                </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <MapPin className="h-3 w-3 flex-shrink-0" />
+                <span className="line-clamp-1">{tooltip.event.location}</span>
               </div>
             )}
-
-            {/* Full details footer */}
-            <div className="mt-2 border-t border-border pt-2 text-xs text-muted-foreground">
-              <p>Full: {formatFullDateTime(tooltip.event.start)}</p>
-            </div>
           </div>
         </div>
       )}

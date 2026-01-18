@@ -53,18 +53,14 @@ export function BackgroundPaths({
   title = "Course Outline to Calendar",
   onUploadClick,
   uploadBox,
+  hideButton = false,
 }: {
   title?: string;
   onUploadClick?: () => void;
   uploadBox?: React.ReactNode;
+  hideButton?: boolean;
 }) {
-  const [showUploadBox, setShowUploadBox] = useState(false);
   const words = title.split(" ");
-
-  const handleUploadClick = () => {
-    setShowUploadBox(true);
-    onUploadClick?.();
-  };
 
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-background text-foreground">
@@ -106,10 +102,10 @@ export function BackgroundPaths({
 
           {/* CTA or Upload Box */}
           <div className="mt-8 flex justify-center">
-            {!showUploadBox ? (
+            {uploadBox || (!hideButton && (
               <Button
                 type="button"
-                onClick={handleUploadClick}
+                onClick={onUploadClick}
                 className="rounded-2xl px-10 py-6 text-lg font-semibold
                 bg-foreground text-background
                 hover:bg-foreground/90
@@ -119,9 +115,7 @@ export function BackgroundPaths({
                 Upload PDF
                 <span className="ml-3">→</span>
               </Button>
-            ) : (
-              uploadBox
-            )}
+            ))}
           </div>
         </motion.div>
       </div>
