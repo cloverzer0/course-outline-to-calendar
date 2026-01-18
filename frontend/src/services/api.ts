@@ -1,24 +1,39 @@
-const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL
-
-export type ValidateIcsResponse = {
-  valid: boolean
-  normalized_ics?: string
-  errors?: string[]
+export type UploadResponse = {
+  token: string
 }
 
-export async function validateIcs(icsText: string): Promise<ValidateIcsResponse> {
-  if (!BASE_URL) throw new Error("NEXT_PUBLIC_BACKEND_URL is not set in .env.local")
+const DEFAULT_BASE_URL = "http://localhost:8000"
 
-  const res = await fetch(`${BASE_URL}/calendar/validate`, {
+function getBaseUrl(): string {
+  return process.env.NEXT_PUBLIC_BACKEND_URL ?? DEFAULT_BASE_URL
+}
+
+/**
+ * Upload multiple course outline PDFs to backend.
+ * Backend expectation:
+ *  - POST {BASE_URL}/calendar/upload
+ *  - multipart/form-data with repeated field name: "files"
+ *  - returns JSON: { token: "..." }
+ */
+export async function uploadCourseOutlines(files: File[]): Promise<UploadResponse> {
+  const baseUrl = getBaseUrl()
+
+  const form = new FormData()
+  for (const f of files) form.append("files", f)
+
+  const res = await fetch(`${baseUrl}/calendar/upload`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ics: icsText }),
+    body: form,
   })
 
   if (!res.ok) {
-    const msg = await res.text().catch(() => "")
-    throw new Error(`Validation failed (${res.status}). ${msg}`)
+    const txt = await res.text().catch(() => "")
+    throw new Error(txt || `Upload failed (${res.status})`)
   }
 
-  return res.json()
+  const data = (await res.json()) as UploadResponse
+  if (!data?.token) {
+    throw new Error("Backend did not return a token.")
+  }
+  return data
 }
