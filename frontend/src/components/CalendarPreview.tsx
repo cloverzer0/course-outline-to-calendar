@@ -157,9 +157,6 @@ export function CalendarPreview({ events }: { events: CalendarPreviewEvent[] }) 
               <h3 className="line-clamp-2 text-lg font-bold text-foreground">
                 {tooltip.event.title}
               </h3>
-              {isPast(tooltip.event.start) && (
-                <p className="mt-1 text-xs text-muted-foreground">📌 Past Event</p>
-              )}
               {isToday(tooltip.event.start) && (
                 <p className="mt-1 inline-block rounded bg-accent px-2 py-0.5 text-xs text-accent-foreground">
                   🔴 Today
