@@ -9,7 +9,8 @@ import {
   SessionResponse,
   SessionSummary,
   CalendarEvent,
-  MultiCourseCalendar
+  MultiCourseCalendar,
+  CourseCalendar
 } from '@/types/calendar';
 
 // Backend API base URL
@@ -21,54 +22,77 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const error = await response.json().catch(() => ({
-      detail: `HTTP ${response.status}: ${response. statusText}`
+      detail: `HTTP ${response.status}:  ${response.statusText}`
     }));
     throw new Error(error.detail || 'API request failed');
   }
   return response.json();
 }
 
+// ========================================
+// MAIN FUNCTION FOR YOUR FRONTEND
+// ========================================
 
 /**
- * COMBINED ENDPOINT APPROACH 
- * Upload + Extract in one call
+ * Upload multiple course outline PDFs and extract all events
+ * 
+ * This function: 
+ * 1. Creates a session
+ * 2. Uploads each PDF one by one
+ * 3. Extracts events from each PDF
+ * 4. Returns session_id (token) for review page
  */
-export async function upload(
-  file: File,
-  sessionId?:  string
-): Promise<CourseExtractionResponse> {
-  const formData = new FormData();
-  formData.append('file', file);
+export async function uploadCourseOutlines(
+  files: File[]
+): Promise<{ token: string; courses: CourseExtractionResponse[] }> {
   
-  const url = new URL(`${API_BASE_URL}/api/process/upload-and-extract`);
-  
-  if (sessionId) {
-    url.searchParams.append('session_id', sessionId);
+  if (files.length === 0) {
+    throw new Error('No files provided');
   }
+
+  // Step 1: Create session
+  const sessionResponse = await createSession();
+  const sessionId = sessionResponse.session_id;
   
-  const response = await fetch(url.toString(), {
-    method: 'POST',
-    body: formData
-  });
+  console.log('[Upload] Created session:', sessionId);
+
+  // Step 2: Upload and extract each PDF
+  const courses: CourseExtractionResponse[] = [];
   
-  return handleResponse<CourseExtractionResponse>(response);
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    console.log(`[Upload] Processing ${i + 1}/${files.length}:  ${file.name}`);
+    
+    try {
+      // Upload + Extract in one call
+      const result = await uploadAndExtractCombined(file, sessionId);
+      courses.push(result);
+      
+      console.log(`[Upload] ✓ Extracted ${result.total_events} events from ${result.course_code}`);
+      
+    } catch (error) {
+      console.error(`[Upload] ✗ Failed to process ${file.name}: `, error);
+      // Continue with other files
+    }
+  }
+
+  if (courses.length === 0) {
+    throw new Error('Failed to extract events from any PDF');
+  }
+
+  console.log(`[Upload] Success! ${courses.length} courses, session:  ${sessionId}`);
+
+  // Return session_id as "token"
+  return {
+    token: sessionId,  // ← This is what your frontend expects
+    courses
+  };
 }
-
-
-
-
-
-
-// =================== SEPERATE ENDPOINT APPROACH ===============
-
 
 // ========================================
 // SESSION MANAGEMENT
 // ========================================
 
-/**
- * Create a new multi-course session
- */
 export async function createSession(): Promise<SessionResponse> {
   const response = await fetch(`${API_BASE_URL}/api/session/create`, {
     method: 'POST',
@@ -80,138 +104,53 @@ export async function createSession(): Promise<SessionResponse> {
   return handleResponse<SessionResponse>(response);
 }
 
-/**
- * Get session summary (all courses and events)
- */
 export async function getSessionSummary(sessionId: string): Promise<SessionSummary> {
   const response = await fetch(`${API_BASE_URL}/api/session/${sessionId}`);
   return handleResponse<SessionSummary>(response);
 }
 
-/**
- * Delete a session
- */
-export async function deleteSession(sessionId: string): Promise<{ status: string; message: string }> {
-  const response = await fetch(`${API_BASE_URL}/api/session/${sessionId}`, {
-    method: 'DELETE'
-  });
-  return handleResponse(response);
-}
-
 // ========================================
-// FILE UPLOAD
+// COMBINED UPLOAD + EXTRACT
 // ========================================
 
 /**
- * Upload a course outline PDF
+ * Upload PDF + Extract events in ONE call
  */
-export async function uploadPDF(file: File): Promise<UploadResponse> {
+export async function uploadAndExtractCombined(
+  file: File,
+  sessionId: string
+): Promise<CourseExtractionResponse> {
   const formData = new FormData();
   formData.append('file', file);
   
-  const response = await fetch(`${API_BASE_URL}/api/upload/`, {
-    method: 'POST',
-    body: formData
-    // Don't set Content-Type header - browser sets it automatically with boundary
-  });
-  
-  return handleResponse<UploadResponse>(response);
-}
-
-// ========================================
-// EVENT EXTRACTION
-// ========================================
-
-/**
- * Extract events from uploaded PDF using AI
- */
-export async function extractEvents(
-  fileId: string,
-  sessionId?:  string
-): Promise<CourseExtractionResponse> {
-  const url = new URL(`${API_BASE_URL}/api/extract/${fileId}`);
-  
-  if (sessionId) {
-    url.searchParams.append('session_id', sessionId);
-  }
+  const url = new URL(`${API_BASE_URL}/api/process/upload-and-extract`);
+  url.searchParams.append('session_id', sessionId);
   
   const response = await fetch(url. toString(), {
-    method: 'POST'
+    method: 'POST',
+    body: formData
   });
   
   return handleResponse<CourseExtractionResponse>(response);
-}
-
-/**
- * Get extraction summary for a session
- */
-export async function getExtractionSummary(sessionId: string): Promise<SessionSummary> {
-  const response = await fetch(`${API_BASE_URL}/api/extract/session/${sessionId}/summary`);
-  return handleResponse<SessionSummary>(response);
-}
-
-// ========================================
-// EVENT MANAGEMENT
-// ========================================
-
-/**
- * Get all events for a session
- */
-export async function getSessionEvents(sessionId: string): Promise<MultiCourseCalendar> {
-  const response = await fetch(`${API_BASE_URL}/api/session/${sessionId}`);
-  const summary = await handleResponse<SessionSummary>(response);
-  
-  // Transform summary to MultiCourseCalendar format
-  // Note: This might need adjustment based on your actual endpoint response
-  return {
-    courses: [],  // You might need a separate endpoint for full event details
-    total_courses: summary. total_courses,
-    total_events: summary.total_events,
-    total_needs_review:  summary.total_needs_review
-  };
-}
-
-/**
- * Update an event
- */
-export async function updateEvent(
-  sessionId: string,
-  eventId: string,
-  event: CalendarEvent
-): Promise<CalendarEvent> {
-  const response = await fetch(`${API_BASE_URL}/api/events/${sessionId}/${eventId}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON. stringify(event)
-  });
-  
-  return handleResponse<CalendarEvent>(response);
-}
-
-/**
- * Delete an event
- */
-export async function deleteEvent(
-  sessionId: string,
-  eventId: string
-): Promise<{ status: string; message: string }> {
-  const response = await fetch(`${API_BASE_URL}/api/events/${sessionId}/${eventId}`, {
-    method: 'DELETE'
-  });
-  
-  return handleResponse(response);
 }
 
 // ========================================
 // CALENDAR EXPORT
 // ========================================
 
+
 /**
- * Export session to . ics calendar file
+ * Get all events for a session (for calendar preview)
  */
-export async function exportCalendar(sessionId: string): Promise<Blob> {
+export async function getSessionEvents(sessionId: string): Promise<CalendarEvent[]> {
+  const response = await fetch(`${API_BASE_URL}/api/events/session/${sessionId}/all`);
+  return handleResponse<CalendarEvent[]>(response);
+}
+
+/**
+ * Export session to .ics file and download
+ */
+export async function downloadCalendar(sessionId: string): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/api/calendar/export/session/${sessionId}`, {
     method: 'POST'
   });
@@ -223,66 +162,18 @@ export async function exportCalendar(sessionId: string): Promise<Blob> {
     throw new Error(error. detail || 'Export failed');
   }
   
-  return response.blob();
-}
-
-/**
- * Download the exported .ics file
- */
-export async function downloadCalendar(sessionId: string, filename?:  string): Promise<void> {
-  const blob = await exportCalendar(sessionId);
+  // Get the .ics file as blob
+  const blob = await response. blob();
   
   // Create download link
   const url = window.URL.createObjectURL(blob);
-  const a = document. createElement('a');
+  const a = document.createElement('a');
   a.href = url;
-  a. download = filename || `my_courses_${sessionId}.ics`;
+  a.download = `my_courses_${sessionId}.ics`;
   document.body.appendChild(a);
   a.click();
   
   // Cleanup
   window.URL.revokeObjectURL(url);
   document.body.removeChild(a);
-}
-
-/**
- * Preview calendar content (for debugging)
- */
-export async function previewCalendar(sessionId: string): Promise<{
-  file_id: string;
-  event_count: number;
-  ics_content: string;
-  preview_url: string;
-}> {
-  const response = await fetch(`${API_BASE_URL}/api/calendar/export/session/${sessionId}/preview`, {
-    method: 'POST'
-  });
-  
-  return handleResponse(response);
-}
-
-// ========================================
-// COMBINED WORKFLOWS
-// ========================================
-
-/**
- * Upload PDF and extract events in one flow
- */
-export async function uploadAndExtract(
-  file: File,
-  sessionId?:  string
-): Promise<{ upload:  UploadResponse; extraction: CourseExtractionResponse }> {
-  // Step 1: Upload PDF
-  const uploadResult = await uploadPDF(file);
-  
-  // Step 2: Extract events
-  const extractionResult = await extractEvents(
-    uploadResult.data.file_id,
-    sessionId
-  );
-  
-  return {
-    upload: uploadResult,
-    extraction: extractionResult
-  };
 }
