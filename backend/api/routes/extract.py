@@ -5,7 +5,7 @@ Event Extraction Endpoint - Real AI Integration
 from fastapi import APIRouter, HTTPException, Query
 from pathlib import Path
 from typing import Optional
-from models.event import CalendarEventList, CourseCalendar, CourseExtractionResponse
+from models.event import CalendarEventList, CourseCalendar, MultiCourseCalendar
 from services. ai_service import ai_service
 from services.event_storage import event_storage
 
@@ -17,7 +17,7 @@ router = APIRouter(
 UPLOAD_DIR = Path("data/uploads")
 
 
-@router.post("/{file_id}", response_model=CourseExtractionResponse)
+@router.post("/{file_id}")
 async def extract_events(
     file_id: str,
     session_id: Optional[str] = Query(None, description="Session ID for multi-course upload")
@@ -37,7 +37,7 @@ async def extract_events(
         session_id: (Optional) Session for grouping multiple courses
         
     Returns:
-        CourseExtractionResponse: Course metadata + extracted events
+        dict: Contains session_id and MultiCourseCalendar data with all courses in session
     """
     
     # Find uploaded PDF
@@ -78,17 +78,20 @@ async def extract_events(
             detail=f"Session {session_id} not found"
         )
     
-    # Return response
-    return CourseExtractionResponse(
-        session_id=session_id,
-        course_code=course_calendar.course_code,
-        course_name=course_calendar.course_name,
-        semester=course_calendar.semester,
-        instructor=course_calendar.instructor,
-        events=course_calendar.events,
-        total_events=course_calendar.event_count,
-        needs_review_count=course_calendar.needs_review_count
-    )
+    # Get complete session with all courses
+    multi_course = event_storage.get_session(session_id)
+    
+    if not multi_course:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve session after adding course"
+        )
+    
+    # Return response with session_id + all courses
+    return {
+        "session_id": session_id,
+        **multi_course.model_dump()
+    }
 
 
 @router.get("/session/{session_id}/summary")

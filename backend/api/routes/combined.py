@@ -10,7 +10,7 @@ import uuid
 import shutil
 from datetime import datetime
 
-from models.event import CourseExtractionResponse
+from models.event import CourseCalendar, MultiCourseCalendar
 from services.ai_service import ai_service
 from services.event_storage import event_storage
 from config import ALLOWED_EXTENSIONS, MAX_FILE_SIZE,   UPLOAD_DIR
@@ -24,7 +24,7 @@ router = APIRouter(
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
-@router.post("/upload-and-extract", response_model=CourseExtractionResponse)
+@router.post("/upload-and-extract")
 async def upload_and_extract(
     file: UploadFile = File(..., description="Course outline PDF file"),
     session_id: Optional[str] = Query(None, description="Session ID for multi-course upload")
@@ -45,7 +45,7 @@ async def upload_and_extract(
         session_id:  (Optional) Session for grouping multiple courses
         
     Returns:
-        CourseExtractionResponse: Complete course data with events
+        dict: Contains session_id and MultiCourseCalendar data with all courses in session
         
     Raises:
         HTTPException: If upload, extraction, or storage fails
@@ -131,16 +131,22 @@ async def upload_and_extract(
     print(f"[Combined] Stored course in session {session_id}")
     
     # ========================================
-    # STEP 6: RETURN JSON RESPONSE
+    # STEP 6: GET ALL COURSES IN SESSION
     # ========================================
     
-    return CourseExtractionResponse(
-        session_id=session_id,
-        course_code=course_calendar.course_code,
-        course_name=course_calendar.course_name,
-        semester=course_calendar.semester,
-        instructor=course_calendar.instructor,
-        events=course_calendar.events,
-        total_events=course_calendar.event_count,
-        needs_review_count=course_calendar.needs_review_count
-    )
+    multi_course = event_storage.get_session(session_id)
+    
+    if not multi_course:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve session after adding course"
+        )
+    
+    # ========================================
+    # STEP 7: RETURN JSON RESPONSE
+    # ========================================
+    
+    return {
+        "session_id": session_id,
+        **multi_course.model_dump()
+    }
