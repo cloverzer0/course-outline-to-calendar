@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
 
 function FloatingPaths({ position }: { position: number }) {
   const paths = Array.from({ length: 36 }, (_, i) => ({
@@ -51,11 +52,19 @@ function FloatingPaths({ position }: { position: number }) {
 export function BackgroundPaths({
   title = "Course Outline to Calendar",
   onUploadClick,
+  uploadBox,
 }: {
   title?: string;
   onUploadClick?: () => void;
+  uploadBox?: React.ReactNode;
 }) {
+  const [showUploadBox, setShowUploadBox] = useState(false);
   const words = title.split(" ");
+
+  const handleUploadClick = () => {
+    setShowUploadBox(true);
+    onUploadClick?.();
+  };
 
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-background text-foreground">
@@ -69,7 +78,7 @@ export function BackgroundPaths({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 1.5 }}
-          className="max-w-4xl mx-auto"
+          className="max-w-4xl mx-auto -mt-70"
         >
           <h1 className="text-5xl sm:text-7xl md:text-8xl font-bold mb-8 tracking-tighter">
             {words.map((word, wordIndex) => (
@@ -95,20 +104,24 @@ export function BackgroundPaths({
             ))}
           </h1>
 
-          {/* CTA */}
+          {/* CTA or Upload Box */}
           <div className="mt-8 flex justify-center">
-            <Button
-              type="button"
-              onClick={onUploadClick}
-              className="rounded-2xl px-10 py-6 text-lg font-semibold
-              bg-foreground text-background
-              hover:bg-foreground/90
-              transition-all duration-300
-              shadow-lg hover:shadow-xl"
-            >
-              Upload PDF
-              <span className="ml-3">→</span>
-            </Button>
+            {!showUploadBox ? (
+              <Button
+                type="button"
+                onClick={handleUploadClick}
+                className="rounded-2xl px-10 py-6 text-lg font-semibold
+                bg-foreground text-background
+                hover:bg-foreground/90
+                transition-all duration-300
+                shadow-lg hover:shadow-xl"
+              >
+                Upload PDF
+                <span className="ml-3">→</span>
+              </Button>
+            ) : (
+              uploadBox
+            )}
           </div>
         </motion.div>
       </div>

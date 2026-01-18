@@ -1,37 +1,56 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import { BackgroundPaths } from "@/components/ui/background-paths"
-import { ModeToggle } from "@/components/mode-toggle"
+import FileUpload from "@/components/FileUpload"
+import { uploadCourseOutlines } from "@/services/api"
+import { toast } from "sonner"
 
 export default function HomePage() {
-  const fileInputRef = React.useRef<HTMLInputElement | null>(null)
-  const [fileName, setFileName] = React.useState<string>("")
+  const router = useRouter()
+
+  const [files, setFiles] = React.useState<File[]>([])
+  const [showUploader, setShowUploader] = React.useState(false)
+  const [submitting, setSubmitting] = React.useState(false)
+
+  function openUploader() {
+    setShowUploader(true)
+  }
+
+  async function handleGenerate(selected: File[]) {
+    try {
+      setSubmitting(true)
+      const { token } = await uploadCourseOutlines(selected)
+
+      // optional: also store locally as fallback (not required)
+      // sessionStorage.setItem("upload_token", token)
+
+      router.push(`/review?token=${encodeURIComponent(token)}`)
+    } catch (err: any) {
+      toast("Upload failed", { description: err?.message ?? "Unknown error" })
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
-    <div className="relative">
-
-      {/* Hidden PDF input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="application/pdf"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0]
-          setFileName(file?.name ?? "")
-        }}
-      />
-
+    <div className="relative min-h-screen">
       <BackgroundPaths
         title="Course Outline to Calendar"
-        onUploadClick={() => fileInputRef.current?.click()}
+        onUploadClick={openUploader}
       />
 
-      {/* tiny file name indicator */}
-      {fileName ? (
-        <div className="absolute left-1/2 bottom-6 -translate-x-1/2 z-50 rounded-full border bg-background/80 px-4 py-2 text-sm backdrop-blur">
-          Selected: <span className="font-medium">{fileName}</span>
+      {/* Uploader panel */}
+      {showUploader ? (
+        <div className="pointer-events-auto absolute inset-x-0 bottom-6 z-50 mx-auto w-[92%] max-w-3xl">
+          <FileUpload
+            files={files}
+            setFiles={setFiles}
+            maxFiles={10}
+            onSubmit={handleGenerate}
+            isSubmitting={submitting}
+          />
         </div>
       ) : null}
     </div>
