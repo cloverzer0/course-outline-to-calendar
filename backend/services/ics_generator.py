@@ -95,9 +95,19 @@ class ICSGenerator:
         start_dt = datetime.fromisoformat(event_data['startDateTime'])
         end_dt = datetime.fromisoformat(event_data['endDateTime'])
         
+        # For recurring events, ensure DTEND is on the SAME DAY as DTSTART
+        # (The recurrence end date is handled by RRULE UNTIL, not DTEND)
+        if event_data.get('recurrence'):
+            # The endDateTime in the data represents the recurrence end date, not the single occurrence end
+            # We need to extract just the TIME from endDateTime and apply it to the SAME day as DTSTART
+            end_time = end_dt.time()
+            end_dt = datetime.combine(start_dt.date(), end_time)
+        
         # Make timezone aware if not already
         if start_dt.tzinfo is None:
             start_dt = self.default_timezone.localize(start_dt)
+        if end_dt.tzinfo is None:
+            end_dt = self.default_timezone.localize(end_dt)
         if end_dt.tzinfo is None:
             end_dt = self.default_timezone.localize(end_dt)
         

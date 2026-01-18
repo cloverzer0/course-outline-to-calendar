@@ -85,7 +85,12 @@ export default function ReviewPage() {
           title: event.title,
           start: new Date(event.startDateTime),
           end: new Date(event.endDateTime),
-          location: event.location
+          location: event.location,
+          recurrence: event.recurrence ? {
+            frequency: event.recurrence.frequency,
+            daysOfWeek: event.recurrence.daysOfWeek,
+            endDate: event.recurrence.endDate
+          } : undefined
         }))
         
         setEvents(previewEvents)

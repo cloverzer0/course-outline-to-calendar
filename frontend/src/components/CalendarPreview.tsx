@@ -13,6 +13,11 @@ export type CalendarPreviewEvent = {
   start: Date
   end?: Date
   location?: string
+  recurrence?: {
+    frequency: string
+    daysOfWeek?: number[]
+    endDate?: string
+  }
 }
 
 export function CalendarPreview({ events }: { events: CalendarPreviewEvent[] }) {
@@ -23,16 +28,41 @@ export function CalendarPreview({ events }: { events: CalendarPreviewEvent[] }) 
   } | null>(null)
   const tooltipRef = React.useRef<HTMLDivElement>(null)
   const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
+  const mousePositionRef = React.useRef<{ x: number; y: number }>({ x: 0, y: 0 })
 
   const fcEvents = React.useMemo(
     () =>
-      events.map((e) => ({
-        id: e.id,
-        title: e.title,
-        start: e.start,
-        end: e.end,
-        extendedProps: { location: e.location },
-      })),
+      events.map((e) => {
+        const event: any = {
+          id: e.id,
+          title: e.title,
+          extendedProps: { location: e.location },
+        }
+
+        // Add recurrence rules if present
+        if (e.recurrence?.frequency === 'weekly' && e.recurrence.daysOfWeek) {
+          // For recurring events, use startTime/endTime instead of start/end
+          const startDate = new Date(e.start)
+          const endDate = e.end ? new Date(e.end) : startDate
+          
+          // Extract time in HH:MM:SS format
+          event.startTime = startDate.toTimeString().substring(0, 8)
+          event.endTime = endDate.toTimeString().substring(0, 8)
+          event.daysOfWeek = e.recurrence.daysOfWeek
+          
+          // Set the date range for the recurring series
+          event.startRecur = startDate.toISOString().split('T')[0]
+          if (e.recurrence.endDate) {
+            event.endRecur = e.recurrence.endDate
+          }
+        } else {
+          // For one-time events, use start/end as usual
+          event.start = e.start
+          event.end = e.end
+        }
+
+        return event
+      }),
     [events],
   )
 
@@ -101,12 +131,18 @@ export function CalendarPreview({ events }: { events: CalendarPreviewEvent[] }) 
         events={fcEvents}
         eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: true }}
         eventDidMount={(info) => {
+          // Track mouse position on hover
+          info.el.addEventListener("mousemove", (e) => {
+            mousePositionRef.current = {
+              x: e.clientX,
+              y: e.clientY
+            }
+          })
+
           // Add hover handlers
           info.el.addEventListener("mouseenter", () => {
             const event = events.find((ev) => ev.id === info.event.id)
             if (event) {
-              const rect = info.el.getBoundingClientRect()
-              
               // Clear any existing timeout
               if (hoverTimeoutRef.current) {
                 clearTimeout(hoverTimeoutRef.current)
@@ -115,8 +151,8 @@ export function CalendarPreview({ events }: { events: CalendarPreviewEvent[] }) 
               // Set 3-second delay before showing tooltip
               hoverTimeoutRef.current = setTimeout(() => {
                 setTooltip({
-                  x: rect.left + window.scrollX,
-                  y: rect.top + window.scrollY - 10,
+                  x: mousePositionRef.current.x,
+                  y: mousePositionRef.current.y - 20, // 20px above cursor
                   event,
                 })
               }, 1000)
@@ -124,7 +160,7 @@ export function CalendarPreview({ events }: { events: CalendarPreviewEvent[] }) 
           })
 
           info.el.addEventListener("mouseleave", () => {
-            // Clear the timeout if user stops hovering before 5 seconds
+            // Clear the timeout if user stops hovering before 3 seconds
             if (hoverTimeoutRef.current) {
               clearTimeout(hoverTimeoutRef.current)
               hoverTimeoutRef.current = null
@@ -160,7 +196,7 @@ export function CalendarPreview({ events }: { events: CalendarPreviewEvent[] }) 
           style={{
             left: `${tooltip.x}px`,
             top: `${tooltip.y}px`,
-            transform: "translateY(-100%)",
+            transform: "translate(-50%, -100%)", // Center horizontally, position above
           }}
           onMouseLeave={() => setTooltip(null)}
         >
