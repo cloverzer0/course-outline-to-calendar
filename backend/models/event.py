@@ -378,3 +378,32 @@ def from_simple_format(event_dict: dict) -> CalendarEvent:
         needsReview=event_dict.get('needsReview', False),
         confidence=event_dict.get('confidence', 1.0)
     )
+
+
+class CourseExtractionResponse(BaseModel):
+    """
+    Response model for course extraction
+    Includes both course metadata and events
+    """
+    session_id: str = Field(description="Session identifier")
+    course_code: str = Field(description="Course code")
+    course_name: str = Field(description="Course name")
+    semester: Optional[str] = Field(default=None, description="Semester")
+    instructor: Optional[str] = Field(default=None, description="Instructor")
+    events: List[CalendarEvent] = Field(description="Extracted events")
+    total_events: int = Field(description="Total number of events")
+    needs_review_count: int = Field(description="Events flagged for review")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "session_id": "session-abc123",
+                "course_code": "CS 301",
+                "course_name":  "Data Structures",
+                "semester":  "Winter 2026",
+                "instructor": "Dr. Smith",
+                "events":  [],
+                "total_events": 15,
+                "needs_review_count": 2
+            }
+        }

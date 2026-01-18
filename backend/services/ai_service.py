@@ -1,79 +1,71 @@
 """
 AI Service Integration
-Calls the AI event extraction pipeline
+Calls Engineer 3's PDF parsing and event extraction
 """
 
 from typing import List
-from models.event import CalendarEvent, EventType
+from models.event import CalendarEvent, CourseCalendar
 from pathlib import Path
-import random
+import sys
+from services.pdf_parser import PDFParser
+
+# Add ai module to path
+ai_path = Path(__file__).parent.parent. parent / "ai"
+sys. path.insert(0, str(ai_path))
 
 
-def extract_events_from_pdf(file_path: str) -> List[CalendarEvent]: 
+
+class AIService:
     """
-    Extract calendar events from PDF using AI
+    Wrapper for Engineer 3's AI extraction pipeline
+    """
     
-    THIS IS A MOCK - Replace with Engineer 3's actual implementation
+    def __init__(self):
+        """Initialize PDF parser"""
+        self.parser = PDFParser()
+    
+    def extract_course_from_pdf(self, file_path: str) -> CourseCalendar:
+        """
+        Extract course calendar from PDF using Engineer 3's parser
+        
+        Args:
+            file_path: Path to uploaded PDF file
+            
+        Returns: 
+            CourseCalendar:  Parsed course with all events
+            
+        Raises:
+            Exception: If parsing fails
+        """
+        try:
+            print(f"[AIService] Extracting events from: {file_path}")
+            
+            # Call Engineer 3's parser
+            course_calendar = self. parser.parse_pdf_file(file_path)
+            
+            print(f"[AIService] Successfully extracted {course_calendar.event_count} events")
+            print(f"[AIService] Course:  {course_calendar.course_code} - {course_calendar.course_name}")
+            
+            return course_calendar
+            
+        except Exception as e:
+            print(f"[AIService] Error extracting events: {str(e)}")
+            raise Exception(f"Failed to extract events from PDF: {str(e)}")
+
+
+# Global singleton instance
+ai_service = AIService()
+
+# Legacy function for backward compatibility
+def extract_events_from_pdf(file_path: str) -> List[CalendarEvent]:
+    """
+    Legacy function - returns just the events list
     
     Args:
-        file_path: Path to uploaded PDF file
+        file_path: Path to PDF file
         
     Returns: 
-        List of extracted CalendarEvent objects
+        List of CalendarEvent objects
     """
-    
-    # TODO: Replace with Great's actual AI extraction
-    # from ai.chains.course_outline_chain import extract_events
-    # return extract_events(file_path)
-    
-    # MOCK DATA for testing. TODO: To be removed
-    mock_events = [
-        CalendarEvent(
-            id="evt-1",
-            title="CS 301 - Data Structures Lecture",
-            startDateTime="2026-01-20T14:00:00",
-            endDateTime="2026-01-20T16:20:00",
-            location="Room 101, Science Building",
-            description="Introduction to arrays and linked lists",
-            type=EventType.LECTURE,
-            recurrence={
-                "frequency": "weekly",
-                "interval": 1,
-                "daysOfWeek": [1, 3],
-                "endDate": "2026-04-30"
-            },
-            needsReview=False,
-            confidence=0.95
-        ),
-        CalendarEvent(
-            id="evt-2",
-            title="Assignment 1 Due",
-            startDateTime="2026-01-25T20:00:00",
-            endDateTime="2026-01-25T23:59:00",
-            location="Online Submission",
-            description="Implement a linked list in Python",
-            type=EventType.ASSIGNMENT,
-            needsReview=False,
-            confidence=0.88
-        ),
-        CalendarEvent(
-            id="evt-3",
-            title="Office Hours - Dr. Smith",
-            startDateTime="2026-01-21T09:00:00",
-            endDateTime="2026-01-21T12:00:00",
-            location="Office 302B",
-            description="Drop-in office hours",
-            type=EventType.OFFICE_HOURS,
-            recurrence={
-                "frequency": "weekly",
-                "interval": 1,
-                "daysOfWeek": [2],
-                "endDate": "2026-04-30"
-            },
-            needsReview=True,
-            confidence=0.65
-        )
-    ]
-    
-    # Simulate some randomness (for testing)
-    return mock_events[:random.randint(2, 3)]
+    course_calendar = ai_service.extract_course_from_pdf(file_path)
+    return course_calendar.events

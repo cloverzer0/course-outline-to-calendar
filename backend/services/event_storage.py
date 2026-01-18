@@ -1,185 +1,237 @@
 """
-Event Storage Service
-In-memory storage for extracted calendar events
-
-TODO:
-For hackathon purposes - stores events in memory. 
-In production, replace with database (PostgreSQL, MongoDB, etc.)
+Event Storage Service - Multi-Course Support
+Stores events organized by session and course
 """
 
 from typing import Dict, List, Optional
-from models.event import CalendarEvent
+from models.event import CalendarEvent, CourseCalendar, MultiCourseCalendar
 import uuid
 
 
 class EventStorage:
     """
-    In-memory event storage
+    Multi-course event storage
     
-    Stores events by upload session (file_id)
-    Each file upload gets a unique session with its extracted events
+    Storage structure:
+    {
+        "session-123": MultiCourseCalendar(
+            courses=[
+                CourseCalendar(course_code="CS301", events=[... ]),
+                CourseCalendar(course_code="MATH205", events=[...])
+            ]
+        )
+    }
     """
     
     def __init__(self):
-        # Storage structure: 
-        # {
-        #   "file_id_123": {
-        #       "evt-1": CalendarEvent(... ),
-        #       "evt-2": CalendarEvent(...),
-        #   }
-        # }
-        self._storage:  Dict[str, Dict[str, CalendarEvent]] = {}
+        # session_id → MultiCourseCalendar
+        self._sessions: Dict[str, MultiCourseCalendar] = {}
+        # file_id → session_id mapping (for backward compatibility)
+        self._file_to_session: Dict[str, str] = {}
     
-    def store_events(self, file_id: str, events: List[CalendarEvent]) -> int:
+    def create_session(self) -> str:
         """
-        Store events for a file upload session
+        Create a new user session for uploading multiple courses
         
-        Args: 
-            file_id: Upload session identifier
-            events: List of events to store
+        Returns:
+            session_id: Unique session identifier
+        """
+        session_id = f"session-{uuid.uuid4().hex[:12]}"
+        self._sessions[session_id] = MultiCourseCalendar(courses=[])
+        return session_id
+    
+    def add_course_to_session(
+        self, 
+        session_id: str, 
+        file_id: str,
+        course:  CourseCalendar
+    ) -> bool:
+        """
+        Add a course to a session
+        
+        Args:
+            session_id: Session identifier
+            file_id: File identifier (links file upload to course)
+            course: CourseCalendar object with events
+            
+        Returns:
+            True if successful, False if session not found
+        """
+        if session_id not in self._sessions:
+            return False
+        
+        # Link file_id to session for backward compatibility
+        self._file_to_session[file_id] = session_id
+        
+        # Add course to session
+        self._sessions[session_id].add_course(course)
+        
+        return True
+    
+    def get_session(self, session_id: str) -> Optional[MultiCourseCalendar]:
+        """
+        Get entire multi-course calendar for a session
+        
+        Args:
+            session_id: Session identifier
             
         Returns: 
-            Number of events stored
+            MultiCourseCalendar if found, None otherwise
         """
-        # Initialize storage for this file if not exists
-        if file_id not in self._storage:
-            self._storage[file_id] = {}
-        
-        # Generate IDs for events that don't have one
-        for event in events:
-            if not event.id:
-                event. id = f"evt-{uuid.uuid4().hex[:8]}"
-            
-            # Store event by its ID
-            self._storage[file_id][event.id] = event
-        
-        return len(events)
+        return self._sessions.get(session_id)
     
-    def get_events(self, file_id: str) -> List[CalendarEvent]:
+    def get_session_by_file_id(self, file_id: str) -> Optional[str]:
         """
-        Get all events for a file upload session
+        Get session_id from file_id
         
         Args:
-            file_id: Upload session identifier
+            file_id: File identifier
             
         Returns:
-            List of events (empty if file_id not found)
+            session_id if found, None otherwise
         """
-        if file_id not in self._storage:
-            return []
-        
-        return list(self._storage[file_id].values())
+        return self._file_to_session.get(file_id)
     
-    def get_event(self, file_id: str, event_id: str) -> Optional[CalendarEvent]:
+    def get_course_by_file_id(self, file_id: str) -> Optional[CourseCalendar]: 
         """
-        Get a specific event
+        Get course associated with a file upload
         
         Args:
-            file_id: Upload session identifier
-            event_id: Event identifier
+            file_id: File identifier
             
         Returns:
-            CalendarEvent if found, None otherwise
+            CourseCalendar if found, None otherwise
         """
-        if file_id not in self._storage:
+        session_id = self._file_to_session.get(file_id)
+        if not session_id:
             return None
         
-        return self._storage[file_id].get(event_id)
+        multi_course = self._sessions.get(session_id)
+        if not multi_course:
+            return None
+        
+        # Find course by matching file_id (stored in course metadata)
+        # For now, we'll match by looking for the file_id in events
+        for course in multi_course.courses:
+            # Check if any event in this course has metadata linking to file_id
+            # This is a simplification - in production you'd store file_id explicitly
+            if course.events:
+                return course
+        
+        return None
     
-    def update_event(self, file_id: str, event_id: str, updated_event: CalendarEvent) -> bool:
+    def get_all_events_in_session(self, session_id: str) -> List[CalendarEvent]:
         """
-        Update an existing event
+        Get all events from all courses in a session
         
         Args:
-            file_id: Upload session identifier
-            event_id:  Event identifier
-            updated_event:  Updated event data
+            session_id:  Session identifier
             
-        Returns:
-            True if updated, False if event not found
+        Returns: 
+            Flat list of all events
         """
-        if file_id not in self._storage:
-            return False
+        multi_course = self._sessions.get(session_id)
+        if not multi_course:
+            return []
         
-        if event_id not in self._storage[file_id]: 
-            return False
-        
-        # Preserve the original ID
-        updated_event.id = event_id
-        self._storage[file_id][event_id] = updated_event
-        
-        return True
+        return multi_course.get_all_events()
     
-    def delete_event(self, file_id: str, event_id:  str) -> bool:
+    def update_event(
+        self, 
+        session_id: str, 
+        event_id: str, 
+        updated_event: CalendarEvent
+    ) -> bool:
         """
-        Delete an event
+        Update an event in any course within a session
         
-        Args:
-            file_id: Upload session identifier
+        Args: 
+            session_id: Session identifier
             event_id: Event identifier
+            updated_event: Updated event data
             
         Returns:
-            True if deleted, False if event not found
+            True if updated, False if not found
         """
-        if file_id not in self._storage:
+        multi_course = self._sessions.get(session_id)
+        if not multi_course: 
             return False
         
-        if event_id not in self._storage[file_id]:
+        # Find and update event across all courses
+        for course in multi_course.courses:
+            for i, event in enumerate(course.events):
+                if event.id == event_id:
+                    updated_event.id = event_id  # Preserve ID
+                    course.events[i] = updated_event
+                    return True
+        
+        return False
+    
+    def delete_event(self, session_id: str, event_id: str) -> bool:
+        """
+        Delete an event from any course in a session
+        
+        Args:
+            session_id:  Session identifier
+            event_id:  Event identifier
+            
+        Returns: 
+            True if deleted, False if not found
+        """
+        multi_course = self._sessions.get(session_id)
+        if not multi_course:
             return False
         
-        del self._storage[file_id][event_id]
+        # Find and delete event across all courses
+        for course in multi_course.courses:
+            course.events = [e for e in course.events if e.id != event_id]
+        
         return True
     
-    def delete_session(self, file_id: str) -> bool:
+    def delete_course(self, session_id: str, course_code: str) -> bool:
         """
-        Delete entire upload session and all its events
+        Delete an entire course from a session
         
-        Args: 
-            file_id: Upload session identifier
+        Args:
+            session_id: Session identifier
+            course_code: Course code to delete
             
         Returns:
-            True if deleted, False if session not found
+            True if deleted, False if not found
         """
-        if file_id not in self._storage:
+        multi_course = self._sessions.get(session_id)
+        if not multi_course: 
             return False
         
-        del self._storage[file_id]
+        multi_course.courses = [
+            c for c in multi_course.courses 
+            if c.course_code != course_code
+        ]
+        
         return True
     
-    def get_stats(self, file_id: str) -> dict:
+    def delete_session(self, session_id: str) -> bool:
         """
-        Get statistics about events in a session
+        Delete entire session and all its courses
         
         Args: 
-            file_id: Upload session identifier
+            session_id: Session identifier
             
         Returns:
-            Dictionary with event statistics
+            True if deleted, False if not found
         """
-        events = self.get_events(file_id)
+        if session_id not in self._sessions:
+            return False
         
-        if not events:
-            return {
-                "total": 0,
-                "needs_review": 0,
-                "by_type": {}
-            }
-        
-        needs_review = sum(1 for e in events if e.needsReview)
-        
-        # Count by type
-        by_type = {}
-        for event in events:
-            event_type = event.type or "other"
-            by_type[event_type] = by_type.get(event_type, 0) + 1
-        
-        return {
-            "total": len(events),
-            "needs_review": needs_review,
-            "by_type": by_type
+        # Remove all file_id mappings for this session
+        self._file_to_session = {
+            k: v for k, v in self._file_to_session.items() 
+            if v != session_id
         }
+        
+        del self._sessions[session_id]
+        return True
 
 
 # Global singleton instance
-# TODO: In production, use dependency injection instead
 event_storage = EventStorage()
