@@ -151,3 +151,25 @@ async def get_event_stats(file_id: str):
         "file_id": file_id,
         "stats": stats
     }
+
+
+@router.get("/session/{session_id}/all", response_model=List[CalendarEvent])
+async def get_all_session_events(session_id: str):
+    """
+    Get ALL events from all courses in a session
+    
+    Used by frontend calendar preview to display events
+    
+    Args:
+        session_id: Session identifier
+        
+    Returns:
+        List of all CalendarEvent objects across all courses
+    """
+    events = event_storage.get_all_events_in_session(session_id)
+    
+    if not events:
+        # Not an error - might just have no events
+        return []
+    
+    return events
