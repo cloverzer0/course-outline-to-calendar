@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from models.event import CalendarEvent, EventType
 
 # Import routers
-from api.routes import upload, extract, events, calendar, session
+from api.routes import upload, extract, events, calendar, session, combined
 
 app = FastAPI(
     title="Course Outline to Calendar API",
@@ -25,6 +25,7 @@ app.include_router(upload. router)
 app.include_router(extract. router)
 app.include_router(events.router)
 app.include_router(calendar.router)
+app.include_router(combined.router)
 
 @app.get("/")
 async def root():
