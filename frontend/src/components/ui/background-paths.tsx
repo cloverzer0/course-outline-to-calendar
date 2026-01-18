@@ -53,18 +53,14 @@ export function BackgroundPaths({
   title = "Course Outline to Calendar",
   onUploadClick,
   uploadBox,
+  showUploadBox = false,
 }: {
   title?: string;
   onUploadClick?: () => void;
   uploadBox?: React.ReactNode;
+  showUploadBox?: boolean;
 }) {
-  const [showUploadBox, setShowUploadBox] = useState(false);
   const words = title.split(" ");
-
-  const handleUploadClick = () => {
-    setShowUploadBox(true);
-    onUploadClick?.();
-  };
 
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-background text-foreground">
@@ -109,7 +105,7 @@ export function BackgroundPaths({
             {!showUploadBox ? (
               <Button
                 type="button"
-                onClick={handleUploadClick}
+                onClick={onUploadClick}
                 className="rounded-2xl px-10 py-6 text-lg font-semibold
                 bg-foreground text-background
                 hover:bg-foreground/90

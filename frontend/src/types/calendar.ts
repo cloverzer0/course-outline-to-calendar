@@ -71,13 +71,10 @@ export interface UploadResponse {
 
 export interface CourseExtractionResponse {
   session_id: string;
-  course_code: string;
-  course_name: string;
-  semester?:  string;
-  instructor?: string;
-  events: CalendarEvent[];
+  courses: CourseCalendar[];
+  total_courses: number;
   total_events: number;
-  needs_review_count:  number;
+  total_needs_review: number;
 }
 
 export interface SessionResponse {
