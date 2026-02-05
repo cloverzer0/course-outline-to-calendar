@@ -24,7 +24,7 @@ class CourseEventsOutput(BaseModel):
     course_code: str = Field(description="The course code (e.g., 'PSYC1001F', 'CS 301')")
     semester: Optional[str] = Field(default=None, description="The semester/term (e.g., 'Winter 2026', 'Fall 2025')")
     instructor: Optional[str] = Field(default=None, description="The course instructor's name (e.g., 'Dr. Smith', 'Prof. Johnson')")
-    events: List[CalendarEvent] = Field(description="List of all events (lectures, quizzes, assignments, exaidms, etc.) found in the outline")
+    events: List[CalendarEvent] = Field(description="List of all events (lectures, quizzes, assignments, exams, etc.) found in the outline")
 
 
 class PDFParser:
