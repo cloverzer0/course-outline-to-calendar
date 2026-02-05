@@ -6,7 +6,6 @@ from fastapi import APIRouter, HTTPException, Query
 from pathlib import Path
 from typing import Optional
 from models.event import CalendarEventList, CourseCalendar, MultiCourseCalendar
-from services. ai_service import ai_service
 from services.event_storage import event_storage
 
 router = APIRouter(
@@ -54,6 +53,8 @@ async def extract_events(
     # Extract using Engineer 3's AI parser
     try:
         print(f"[Extract] Processing file: {file_path}")
+        # Lazy import to avoid loading heavy AI libraries at startup
+        from services.ai_service import ai_service
         course_calendar = ai_service.extract_course_from_pdf(file_path)
         print(f"[Extract] Extracted {course_calendar.event_count} events for {course_calendar.course_code}")
         

@@ -11,7 +11,6 @@ import shutil
 from datetime import datetime
 
 from models.event import CourseCalendar, MultiCourseCalendar
-from services.ai_service import ai_service
 from services.event_storage import event_storage
 from config import ALLOWED_EXTENSIONS, MAX_FILE_SIZE,   UPLOAD_DIR
 
@@ -98,6 +97,8 @@ async def upload_and_extract(
     
     try: 
         print(f"[Combined] Starting AI extraction for:  {file.filename}")
+        # Lazy import to avoid loading heavy AI libraries at startup
+        from services.ai_service import ai_service
         course_calendar = ai_service.extract_course_from_pdf(str(file_path))
         print(f"[Combined] ✓ Extracted {course_calendar.event_count} events for {course_calendar.course_code}")
         
