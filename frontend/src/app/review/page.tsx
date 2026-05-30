@@ -61,6 +61,16 @@ function ReviewPageContent() {
   const [events, setEvents] = React.useState<CalendarPreviewEvent[]>([])
   const [error, setError] = React.useState<string | null>(null)
 
+  const initialCalendarDate = React.useMemo(() => {
+    if (events.length === 0) {
+      return undefined
+    }
+
+    return events.reduce((earliest, event) =>
+      event.start < earliest ? event.start : earliest,
+    events[0].start)
+  }, [events])
+
   // Fetch session data on mount
   React.useEffect(() => {
     if (!sessionId) {
@@ -255,7 +265,7 @@ function ReviewPageContent() {
 
         {/* Calendar Preview */}
         <div className="mt-6 rounded-xl bg-card text-card-foreground p-4">
-          <CalendarPreview events={events} />
+          <CalendarPreview events={events} initialDate={initialCalendarDate} />
         </div>
       </div>
     </main>
