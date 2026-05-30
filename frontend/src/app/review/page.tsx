@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { CalendarPreview, type CalendarPreviewEvent } from "@/components/CalendarPreview"
@@ -51,7 +52,7 @@ function OutlookIcon(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
-export default function ReviewPage() {
+function ReviewPageContent() {
   const searchParams = useSearchParams()
   const sessionId = searchParams.get('token')
 
@@ -258,5 +259,24 @@ export default function ReviewPage() {
         </div>
       </div>
     </main>
+  )
+}
+
+export default function ReviewPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-background text-foreground">
+        <div className="mx-auto max-w-6xl px-6 py-10">
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading your courses...</p>
+            </div>
+          </div>
+        </div>
+      </main>
+    }>
+      <ReviewPageContent />
+    </Suspense>
   )
 }

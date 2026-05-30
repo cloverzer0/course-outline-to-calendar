@@ -68,7 +68,8 @@ export async function uploadCourseOutlines(
       const result = await uploadAndExtractCombined(file, sessionId);
       courses.push(result);
       
-      console.log(`[Upload] ✓ Extracted ${result.total_events} events from ${result.course_code}`);
+      const courseCode = result.courses[0]?.course_code || file.name;
+      console.log(`[Upload] ✓ Extracted ${result.total_events} events from ${courseCode}`);
       
     } catch (error) {
       console.error(`[Upload] ✗ Failed to process ${file.name}: `, error);
