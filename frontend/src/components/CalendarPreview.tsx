@@ -20,7 +20,12 @@ export type CalendarPreviewEvent = {
   }
 }
 
-export function CalendarPreview({ events }: { events: CalendarPreviewEvent[] }) {
+type CalendarPreviewProps = {
+  events: CalendarPreviewEvent[]
+  initialDate?: Date
+}
+
+export function CalendarPreview({ events, initialDate }: CalendarPreviewProps) {
   const [tooltip, setTooltip] = React.useState<{
     x: number
     y: number
@@ -122,6 +127,7 @@ export function CalendarPreview({ events }: { events: CalendarPreviewEvent[] }) 
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="dayGridMonth"
+        initialDate={initialDate}
         headerToolbar={{
           left: "prev,next today",
           center: "title",
