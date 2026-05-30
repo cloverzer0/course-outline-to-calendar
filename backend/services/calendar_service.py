@@ -3,8 +3,7 @@ Calendar Generation Service
 Integration with ICS Generator
 """
 
-from typing import List
-from models.event import CalendarEvent, MultiCourseCalendar
+from models.event import MultiCourseCalendar
 from services. ics_generator import ICSGenerator
 import os
 
@@ -38,34 +37,6 @@ def generate_multi_course_ics(multi_course:  MultiCourseCalendar, session_id: st
     os.makedirs(output_dir, exist_ok=True)
     
     filename = f"multi_course_{session_id}.ics"
-    filepath = os.path.join(output_dir, filename)
-    
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write(ics_content)
-    
-    return filepath
-
-
-def generate_single_course_ics(events: List[CalendarEvent], file_id: str) -> str:
-    """
-    Generate .ics file from single course (backward compatibility)
-    
-    Args:
-        events: List of calendar events
-        file_id: File identifier (used for filename)
-        
-    Returns:
-        Path to generated .ics file
-    """
-    generator = ICSGenerator(timezone="America/Toronto")
-    
-    ics_content = generator.generate_ics(events, "Course Calendar")
-    
-    # Save to file
-    output_dir = "data/calendars"
-    os.makedirs(output_dir, exist_ok=True)
-    
-    filename = f"course_{file_id}.ics"
     filepath = os.path.join(output_dir, filename)
     
     with open(filepath, "w", encoding="utf-8") as f:

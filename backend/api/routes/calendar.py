@@ -5,7 +5,7 @@ Calendar Export Endpoint - Multi-Course Support
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from services.event_storage import event_storage
-from services.calendar_service import generate_multi_course_ics, generate_single_course_ics
+from services.calendar_service import generate_multi_course_ics
 import os
 
 router = APIRouter(
@@ -66,55 +66,6 @@ async def export_multi_course_calendar(session_id: str):
         filename=f"my_courses_{session_id}.ics",
         headers={
             "Content-Disposition":  f'attachment; filename="my_courses_{session_id}. ics"'
-        }
-    )
-
-
-@router.post("/export/file/{file_id}")
-async def export_single_course_calendar(file_id: str):
-    """
-    Export single course to . ics file (backward compatibility)
-    
-    Args:
-        file_id: File identifier
-        
-    Returns: 
-        FileResponse: Downloadable . ics file
-    """
-    # Get session from file_id
-    session_id = event_storage.get_session_by_file_id(file_id)
-    
-    if not session_id:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No session found for file {file_id}"
-        )
-    
-    # Get course
-    course = event_storage.get_course_by_file_id(file_id)
-    
-    if not course or not course.events:
-        raise HTTPException(
-            status_code=404,
-            detail="No events found for this file"
-        )
-    
-    # Generate .ics file
-    try:
-        ics_filepath = generate_single_course_ics(course.events, file_id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to generate calendar: {str(e)}"
-        )
-    
-    # Return file
-    return FileResponse(
-        path=ics_filepath,
-        media_type="text/calendar",
-        filename=f"{course.course_code}_calendar.ics",
-        headers={
-            "Content-Disposition":  f'attachment; filename="{course.course_code}_calendar. ics"'
         }
     )
 
